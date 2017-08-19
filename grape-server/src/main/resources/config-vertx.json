@@ -1,4 +1,0 @@
-{
-	"vertx.blockedThreadCheckInterval": 30000,
-	"vertx.workerPoolSize": 2
-}

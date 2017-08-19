@@ -65,7 +65,7 @@ public class HttpServerVerticle extends AbstractVerticle {
         routerBuilder.handler(new DelayJobHandler(context));
         mainRouter.mountSubRouter("/api", routerBuilder.build());
 
-        int serverPort = config.getInteger("web.http.port", 9521);
+        int serverPort = config.getJsonObject("verticle", new JsonObject()).getInteger("http.port", 9521);
         HttpServerOptions serverOptions = new HttpServerOptions().setIdleTimeout(180);
         vertx.createHttpServer(serverOptions).requestHandler(mainRouter::accept).listen(serverPort, ar -> {
             if (ar.succeeded()) {

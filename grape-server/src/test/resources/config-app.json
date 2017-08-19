@@ -1,5 +1,6 @@
 {
 	"vertx": {
+		"blockedThreadCheckInterval": 30000,
 		"workerPoolSize": 2
 	},
 	"verticle": {
