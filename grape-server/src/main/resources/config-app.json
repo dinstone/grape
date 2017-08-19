@@ -1,0 +1,8 @@
+{
+	"http.verticle.instances": 1,
+	"web.http.port": 9521,
+	"redis": {
+		"Host": "127.0.0.1",
+		"Port": 6379
+	}
+}
