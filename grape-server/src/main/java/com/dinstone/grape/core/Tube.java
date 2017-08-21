@@ -84,6 +84,22 @@ public class Tube {
         return this;
     }
 
+    public Tube delete(String jobId) {
+        Jedis jedis = jedisPool.getResource();
+        try {
+            jedis.del(jobKeyPrefix + jobId);
+            // delete from delay queue
+            jedis.zrem(delayQuene, jobId);
+            jedis.zrem(readyQuene, jobId);
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+
+        return this;
+    }
+
     public List<Job> consume(long max) {
         List<Job> jobs = new ArrayList<>();
         Jedis jedis = jedisPool.getResource();
@@ -160,22 +176,6 @@ public class Tube {
                 }
             }
         }
-    }
-
-    public Tube finish(String jobId) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            jedis.del(jobKeyPrefix + jobId);
-            // delete from delay queue
-            jedis.zrem(delayQuene, jobId);
-            jedis.zrem(readyQuene, jobId);
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-
-        return this;
     }
 
     public Tube release(String jobId, long dtr) {

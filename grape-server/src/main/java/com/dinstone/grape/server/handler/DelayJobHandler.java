@@ -98,6 +98,36 @@ public class DelayJobHandler {
 
     }
 
+    @Delete("/delete")
+    public void delete(RoutingContext ctx) {
+        String tubeName = ctx.request().getParam("tube");
+        if (tubeName == null || tubeName.length() == 0) {
+            failed(ctx, "tube is empty");
+            return;
+        }
+
+        String id = ctx.request().getParam("id");
+        if (id == null || id.length() == 0) {
+            failed(ctx, "id is empty");
+            return;
+        }
+
+        ctx.vertx().executeBlocking(future -> {
+            try {
+                broker.delete(tubeName, id);
+                future.complete();
+            } catch (Exception e) {
+                future.fail(e);
+            }
+        }, false, ar -> {
+            if (ar.succeeded()) {
+                success(ctx);
+            } else {
+                failed(ctx, ar.cause());
+            }
+        });
+    }
+
     @SuppressWarnings("unchecked")
     @Get("/consume")
     public void consume(RoutingContext ctx) {

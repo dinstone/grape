@@ -70,6 +70,10 @@ public class Broker {
         getTube(tubeName).produce(job);
     }
 
+    public void delete(String tubeName, String jobId) {
+        getTube(tubeName).delete(jobId);
+    }
+
     public List<Job> consume(String tubeName, long max) {
         if (max < 1) {
             max = 1;
@@ -89,7 +93,7 @@ public class Broker {
     }
 
     public void finish(String tubeName, String jobId) {
-        getTube(tubeName).finish(jobId);
+        getTube(tubeName).delete(jobId);
     }
 
     public void release(String tubeName, String id, long dtr) {
