@@ -170,5 +170,6 @@
 
 	<modules>
 		<module>grape-server</module>
+		<module>grape-core</module>
 	</modules>
 </project>
