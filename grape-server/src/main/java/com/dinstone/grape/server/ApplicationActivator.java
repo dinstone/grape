@@ -19,6 +19,7 @@ package com.dinstone.grape.server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.dinstone.grape.server.verticle.GrapeVerticleFactory;
 import com.dinstone.grape.server.verticle.HttpServerVerticle;
 
 import io.vertx.core.DeploymentOptions;
@@ -39,25 +40,26 @@ public class ApplicationActivator {
 
     public void start() throws Exception {
         JsonObject config = ConfigHelper.loadConfig("config-app.json");
-        LOG.info("app config :\r\n{}", config.encodePrettily());
+        LOG.info("application config :\r\n{}", config.encodePrettily());
 
         vertx = VertxHelper.createVertx(loadVertxOptions(config));
+
         context = new ApplicationContext(config);
 
-        vertx.sharedData().getLocalMap("service").put(ApplicationContext.class.getName(), context);
-
-        JsonObject vconfig = config.getJsonObject("verticle",new JsonObject());
+        GrapeVerticleFactory factory = new GrapeVerticleFactory(context);
+        JsonObject vconfig = config.getJsonObject("verticle", new JsonObject());
         int instances = vconfig.getInteger("http.instances", Runtime.getRuntime().availableProcessors());
         DeploymentOptions hvOptions = new DeploymentOptions().setConfig(config).setInstances(instances);
-        VertxHelper.deployVerticle(vertx, hvOptions, HttpServerVerticle.class.getName());
+        VertxHelper.deployVerticle(vertx, hvOptions, factory, factory.getVerticleName(HttpServerVerticle.class));
     }
 
     public void stop() {
         if (vertx != null) {
-            vertx.close();
-        }
-        if (context != null) {
-            context.destroy();
+            vertx.close(ar -> {
+                if (context != null) {
+                    context.destroy();
+                }
+            });
         }
     }
 

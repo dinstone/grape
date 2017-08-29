@@ -30,7 +30,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.shareddata.LocalMap;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 
@@ -38,13 +37,18 @@ public class HttpServerVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpServerVerticle.class);
 
+    private ApplicationContext context;
+
     private JsonObject config;
+
+    public HttpServerVerticle(ApplicationContext context) {
+        this.context = context;
+    }
 
     @Override
     public void init(Vertx vertx, Context context) {
         super.init(vertx, context);
-
-        this.config = context.config();
+        this.config = config();
     }
 
     @Override
@@ -57,9 +61,6 @@ public class HttpServerVerticle extends AbstractVerticle {
 
         mainRouter.route().handler(new AccessLogHandler());
         mainRouter.route().handler(BodyHandler.create());
-
-        LocalMap<Object, Object> localMap = vertx.sharedData().getLocalMap("service");
-        ApplicationContext context = (ApplicationContext) localMap.get(ApplicationContext.class.getName());
 
         RouterBuilder routerBuilder = RouterBuilder.create(vertx);
         routerBuilder.handler(new DelayJobHandler(context));
