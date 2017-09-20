@@ -35,21 +35,6 @@
 			<version>3.4.1</version>
 		</dependency>
 		<dependency>
-			<groupId>io.vertx</groupId>
-			<artifactId>vertx-circuit-breaker</artifactId>
-			<version>3.4.1</version>
-		</dependency>
-		<dependency>
-			<groupId>io.vertx</groupId>
-			<artifactId>vertx-health-check</artifactId>
-			<version>3.4.1</version>
-		</dependency>
-		<dependency>
-			<groupId>io.vertx</groupId>
-			<artifactId>vertx-jdbc-client</artifactId>
-			<version>3.4.1</version>
-		</dependency>
-		<dependency>
 			<groupId>com.dinstone.vertx</groupId>
 			<artifactId>vertx-web-assistant</artifactId>
 			<version>2.1.0</version>
@@ -104,4 +89,47 @@
 			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>com.dinstone.motor</groupId>
+				<artifactId>motor-maven-plugin</artifactId>
+				<version>1.0.0</version>
+				<configuration>
+					<includeBaseDirectory>true</includeBaseDirectory>
+					<launcher>
+						<properties>
+							<property>
+								<name>Xmn</name>
+								<value>128m</value>
+							</property>
+							<property>
+								<name>Xms</name>
+								<value>1g</value>
+							</property>
+							<property>
+								<name>Xmx</name>
+								<value>1g</value>
+							</property>
+						</properties>
+					</launcher>
+					<application>
+						<activator>com.dinstone.grape.server.ApplicationActivator</activator>
+						<config>
+							<directory>src/main/resources</directory>
+						</config>
+					</application>
+				</configuration>
+				<executions>
+					<execution>
+						<id>launcher-package</id>
+						<phase>package</phase>
+						<goals>
+							<goal>publish</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 </project>
