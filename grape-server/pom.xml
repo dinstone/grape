@@ -111,6 +111,14 @@
 								<name>Xmx</name>
 								<value>1g</value>
 							</property>
+							<property>
+								<name>launcher.listen.enabled</name>
+								<value>true</value>
+							</property>
+							<property>
+								<name>launcher.listen.port</name>
+								<value>4444</value>
+							</property>
 						</properties>
 					</launcher>
 					<application>
