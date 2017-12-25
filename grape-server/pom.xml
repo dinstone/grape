@@ -1,10 +1,9 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.dinstone.grape</groupId>
 		<artifactId>grape</artifactId>
-		<version>1.0.0</version>
+		<version>1.0.1</version>
 	</parent>
 	<artifactId>grape-server</artifactId>
 	<properties>
@@ -94,7 +93,7 @@
 			<plugin>
 				<groupId>com.dinstone.motor</groupId>
 				<artifactId>motor-maven-plugin</artifactId>
-				<version>1.0.0</version>
+				<version>1.1.0</version>
 				<configuration>
 					<includeBaseDirectory>true</includeBaseDirectory>
 					<launcher>
@@ -123,9 +122,11 @@
 					</launcher>
 					<application>
 						<activator>com.dinstone.grape.server.ApplicationActivator</activator>
-						<config>
-							<directory>src/main/resources</directory>
-						</config>
+						<configs>
+							<config>
+								<directory>src/main/resources</directory>
+							</config>
+						</configs>
 					</application>
 				</configuration>
 				<executions>

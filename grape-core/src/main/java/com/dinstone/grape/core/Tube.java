@@ -243,7 +243,7 @@ public class Tube {
             job.setTtr(Long.parseLong(ttr));
         }
         String noe = map.get("noe");
-        if (ttr != null) {
+        if (noe != null) {
             job.setNoe(Long.parseLong(noe));
         }
         String data = map.get("data");
