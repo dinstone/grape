@@ -70,11 +70,13 @@ public class Tube {
     public Tube produce(Job job) {
         Jedis jedis = jedisPool.getResource();
         try {
-            Map<String, String> hashJob = job2Map(job);
-            jedis.hmset(jobKeyPrefix + job.getId(), hashJob);
+            if (jedis.zscore(delayQuene, job.getId()) == null) {
+                Map<String, String> hashJob = job2Map(job);
+                jedis.hmset(jobKeyPrefix + job.getId(), hashJob);
 
-            double score = System.currentTimeMillis() + job.getDtr();
-            jedis.zadd(delayQuene, score, job.getId());
+                double score = System.currentTimeMillis() + job.getDtr();
+                jedis.zadd(delayQuene, score, job.getId());
+            }
         } finally {
             if (jedis != null) {
                 jedis.close();
