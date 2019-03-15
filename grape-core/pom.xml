@@ -9,7 +9,7 @@
 	<artifactId>grape-core</artifactId>
 	<properties>
 		<slf4j.version>1.7.13</slf4j.version>
-		<jedis.version>2.7.3</jedis.version>
+		<jedis.version>2.10.2</jedis.version>
 	</properties>
 	<dependencies>
 		<dependency>
