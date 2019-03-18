@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014~2017 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2019 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.dinstone.grape.core;
 
 import java.io.UnsupportedEncodingException;
@@ -45,37 +44,104 @@ public class Tube {
 
     private final String tubeName;
 
-    private final String delayQuene;
+    /**
+     * tube stats type : hashmap
+     */
+    private final String tubeStats;
 
-    private final String readyQuene;
+    /**
+     * job type : hashmap
+     */
+    private final String jobPrefix;
 
-    private final String failedQuene;
+    /**
+     * delay queue type : zset
+     */
+    private final String delayQueue;
 
-    private final String jobKeyPrefix;
+    /**
+     * ready queue type : zset
+     */
+    private final String readyQueue;
+
+    /**
+     * failed queue type : zset
+     */
+    private final String failedQueue;
 
     public Tube(String tubeName, JedisPool jedisPool) {
         this.jedisPool = jedisPool;
         this.tubeName = tubeName;
 
-        this.delayQuene = TUBE_PREFIX + tubeName + ":queue:delay";
-        this.readyQuene = TUBE_PREFIX + tubeName + ":queue:ready";
-        this.failedQuene = TUBE_PREFIX + tubeName + ":queue:failed";
-        this.jobKeyPrefix = TUBE_PREFIX + tubeName + ":job:";
+        this.jobPrefix = TUBE_PREFIX + tubeName + ":job:";
+        this.tubeStats = TUBE_PREFIX + tubeName + ":stats";
+
+        this.delayQueue = TUBE_PREFIX + tubeName + ":queue:delay";
+        this.readyQueue = TUBE_PREFIX + tubeName + ":queue:ready";
+        this.failedQueue = TUBE_PREFIX + tubeName + ":queue:failed";
+
     }
 
-    public String getTubeName() {
+    /**
+     * tube's name
+     * 
+     * @return
+     */
+    public String name() {
         return tubeName;
     }
 
+    /**
+     * tube's stats info
+     * 
+     * @return
+     */
+    public Stats stats() {
+        Jedis jedis = jedisPool.getResource();
+        try {
+            Stats stats = new Stats();
+            stats.setTubeName(tubeName);
+
+            stats.setDelayQueueSize(jedis.zcard(delayQueue));
+            stats.setReadyQueueSize(jedis.zcard(readyQueue));
+            stats.setFailedQueueSize(jedis.zcard(failedQueue));
+
+            Map<String, String> tsMap = jedis.hgetAll(tubeStats);
+            String tjs = tsMap.get("tjs");
+            if (tjs != null) {
+                stats.setTotalJobSize(Long.parseLong(tjs));
+            }
+            String fjs = tsMap.get("fjs");
+            if (fjs != null) {
+                stats.setFinishJobSize(Long.parseLong(fjs));
+            }
+
+            return stats;
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+    }
+
+    /**
+     * add a job to tube's delay queue.
+     * 
+     * @param job
+     * @return
+     */
     public Tube produce(Job job) {
         Jedis jedis = jedisPool.getResource();
         try {
-            if (jedis.zscore(delayQuene, job.getId()) == null) {
+            if (jedis.zscore(delayQueue, job.getId()) == null) {
                 Map<String, String> hashJob = job2Map(job);
-                jedis.hmset(jobKeyPrefix + job.getId(), hashJob);
+                jedis.hmset(jobPrefix + job.getId(), hashJob);
 
                 double score = System.currentTimeMillis() + job.getDtr();
-                jedis.zadd(delayQuene, score, job.getId());
+                long uc = jedis.zadd(delayQueue, score, job.getId());
+                if (uc > 0) {
+                    jedis.hincrBy(tubeStats, "tjs", 1);
+                }
             }
         } finally {
             if (jedis != null) {
@@ -86,13 +152,23 @@ public class Tube {
         return this;
     }
 
+    /**
+     * the job is success, delete job from tube's delay and ready queue.
+     * 
+     * @param jobId
+     * @return
+     */
     public Tube delete(String jobId) {
         Jedis jedis = jedisPool.getResource();
         try {
-            jedis.del(jobKeyPrefix + jobId);
-            // delete from delay queue
-            jedis.zrem(delayQuene, jobId);
-            jedis.zrem(readyQuene, jobId);
+            long uc = jedis.del(jobPrefix + jobId);
+            if (uc > 0) {
+                // delete from delay queue
+                jedis.zrem(delayQueue, jobId);
+                jedis.zrem(readyQueue, jobId);
+
+                jedis.hincrBy(tubeStats, "fjs", 1);
+            }
         } finally {
             if (jedis != null) {
                 jedis.close();
@@ -102,20 +178,26 @@ public class Tube {
         return this;
     }
 
+    /**
+     * consume some jobs.
+     * 
+     * @param max
+     * @return
+     */
     public List<Job> consume(long max) {
         List<Job> jobs = new ArrayList<>();
         Jedis jedis = jedisPool.getResource();
         try {
-            Set<String> jobSet = jedis.zrange(readyQuene, 0, max - 1);
+            Set<String> jobSet = jedis.zrange(readyQueue, 0, max - 1);
             for (String jobId : jobSet) {
-                Map<String, String> jobMap = jedis.hgetAll(jobKeyPrefix + jobId);
+                Map<String, String> jobMap = jedis.hgetAll(jobPrefix + jobId);
                 if (jobMap == null || jobMap.get("id") == null) {
                     LOG.warn("job[{}:{}] is invalid, remove from delay and ready queue.", tubeName, jobId);
                     // delete from delay queue
-                    jedis.zrem(delayQuene, jobId);
-                    jedis.zrem(readyQuene, jobId);
+                    jedis.zrem(delayQueue, jobId);
+                    jedis.zrem(readyQueue, jobId);
                 } else {
-                    jedis.hincrBy(jobKeyPrefix + jobId, "noe", 1);
+                    jedis.hincrBy(jobPrefix + jobId, "noe", 1);
 
                     Job job = null;
                     try {
@@ -127,8 +209,8 @@ public class Tube {
                     }
 
                     double score = System.currentTimeMillis() + job.getTtr();
-                    jedis.zadd(delayQuene, score, jobId);
-                    jedis.zrem(readyQuene, jobId);
+                    jedis.zadd(delayQueue, score, jobId);
+                    jedis.zrem(readyQueue, jobId);
 
                     jobs.add(job);
                 }
@@ -141,12 +223,15 @@ public class Tube {
         return jobs;
     }
 
+    /**
+     * schedule job to ready queue
+     */
     public void schedule() {
         int maxScheduleCount = 10;
         while (maxScheduleCount > 0) {
             Jedis jedis = jedisPool.getResource();
             try {
-                Set<Tuple> jobScoreSet = jedis.zrangeWithScores(delayQuene, 0, 100);
+                Set<Tuple> jobScoreSet = jedis.zrangeWithScores(delayQueue, 0, 100);
                 if (jobScoreSet == null || jobScoreSet.size() == 0) {
                     break;
                 }
@@ -157,17 +242,17 @@ public class Tube {
                 for (Tuple jobScore : jobScoreSet) {
                     if (jobScore.getScore() < currentTime) {
                         String jobId = jobScore.getElement();
-                        String dtr = jedis.hget(jobKeyPrefix + jobId, "dtr");
+                        String dtr = jedis.hget(jobPrefix + jobId, "dtr");
                         if (dtr == null) {
                             LOG.warn("job[{}:{}] is invalid, remove from delay queue.", tubeName, jobId);
-                            jedis.zrem(delayQuene, jobId);
+                            jedis.zrem(delayQueue, jobId);
                             continue;
                         }
 
                         double score = currentTime + ONE_YEAR_MS + Long.parseLong(dtr);
-                        jedis.zadd(delayQuene, score, jobId);
+                        jedis.zadd(delayQueue, score, jobId);
 
-                        jedis.zadd(readyQuene, currentTime, jobId);
+                        jedis.zadd(readyQueue, currentTime, jobId);
                     } else {
                         break;
                     }
@@ -180,13 +265,20 @@ public class Tube {
         }
     }
 
+    /**
+     * release a job to delay queue with the new dtr.
+     * 
+     * @param jobId
+     * @param dtr
+     * @return
+     */
     public Tube release(String jobId, long dtr) {
         Jedis jedis = jedisPool.getResource();
         try {
-            if (jedis.exists(jobKeyPrefix + jobId)) {
-                jedis.hset(jobKeyPrefix + jobId, "dtr", "" + dtr);
+            if (jedis.exists(jobPrefix + jobId)) {
+                jedis.hset(jobPrefix + jobId, "dtr", "" + dtr);
                 double score = System.currentTimeMillis() + dtr;
-                jedis.zadd(delayQuene, score, jobId);
+                jedis.zadd(delayQueue, score, jobId);
             }
         } finally {
             if (jedis != null) {
@@ -197,31 +289,124 @@ public class Tube {
         return this;
     }
 
+    /**
+     * the job is failure, move the job to failed queue.
+     * 
+     * @param jobId
+     * @return
+     */
     public Tube failure(String jobId) {
         Jedis jedis = jedisPool.getResource();
         try {
-            if (jedis.exists(jobKeyPrefix + jobId)) {
+            if (jedis.exists(jobPrefix + jobId)) {
                 double score = System.currentTimeMillis();
-                jedis.zadd(failedQuene, score, jobId);
+                jedis.zadd(failedQueue, score, jobId);
 
                 // delete from delay queue
-                jedis.zrem(delayQuene, jobId);
-                jedis.zrem(readyQuene, jobId);
+                jedis.zrem(delayQueue, jobId);
+                jedis.zrem(readyQueue, jobId);
             }
         } finally {
             if (jedis != null) {
                 jedis.close();
             }
         }
+        return this;
+    }
+
+    /**
+     * peek the failed job to consume it.
+     * 
+     * @param max
+     * @return
+     */
+    public List<Job> peek(long max) {
+        List<Job> jobs = new ArrayList<>();
+        Jedis jedis = jedisPool.getResource();
+        try {
+            Set<String> jobSet = jedis.zrange(failedQueue, 0, max - 1);
+            for (String jobId : jobSet) {
+                Map<String, String> jobMap = jedis.hgetAll(jobPrefix + jobId);
+                if (jobMap == null || jobMap.get("id") == null) {
+                    LOG.warn("job[{}:{}] is invalid, remove from failed queue.", tubeName, jobId);
+                    jedis.zrem(failedQueue, jobId);
+                } else {
+                    Job job = null;
+                    try {
+                        job = map2Job(jobMap);
+                    } catch (Exception e) {
+                        LOG.warn("job[{}:{}] is invalid, discard the job.", tubeName, jobId);
+                        discard(jobId);
+                        continue;
+                    }
+
+                    jobs.add(job);
+                }
+            }
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+        return jobs;
+    }
+
+    /**
+     * discard job from tube's failed queue.
+     * 
+     * @param jobId
+     * @return
+     */
+    public Tube discard(String jobId) {
+        Jedis jedis = jedisPool.getResource();
+        try {
+            long dc = jedis.zrem(failedQueue, jobId);
+            if (dc > 0) {
+                jedis.del(jobPrefix + jobId);
+
+                jedis.hincrBy(tubeStats, "fjs", 1);
+            }
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+
+        return this;
+    }
+
+    /**
+     * kick the failed job to delay queue.
+     * 
+     * @param jobId
+     * @param dtr
+     * @return
+     */
+    public Tube kick(String jobId, long dtr) {
+        Jedis jedis = jedisPool.getResource();
+        try {
+            if (jedis.exists(jobPrefix + jobId)) {
+                jedis.hset(jobPrefix + jobId, "dtr", "" + dtr);
+                double score = System.currentTimeMillis() + dtr;
+                jedis.zadd(delayQueue, score, jobId);
+
+                jedis.zrem(failedQueue, jobId);
+            }
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+
         return this;
     }
 
     private Map<String, String> job2Map(Job job) {
         Map<String, String> res = new HashMap<>();
         res.put("id", job.getId());
-        res.put("dtr", "" + job.getDtr());
-        res.put("ttr", "" + job.getTtr());
-        res.put("noe", "" + job.getNoe());
+        res.put("dtr", Long.toString(job.getDtr()));
+        res.put("ttr", Long.toString(job.getTtr()));
+        res.put("noe", Long.toString(job.getNoe()));
         try {
             res.put("data", encode(job.getData()));
         } catch (UnsupportedEncodingException e) {

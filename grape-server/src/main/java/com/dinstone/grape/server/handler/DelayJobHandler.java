@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014~2017 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2019 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.dinstone.grape.server.handler;
 
 import java.util.List;
 
-import com.dinstone.grape.core.Broker;
 import com.dinstone.grape.core.Job;
 import com.dinstone.grape.server.ApplicationContext;
 import com.dinstone.vertx.web.annotation.Delete;
@@ -28,19 +26,14 @@ import com.dinstone.vertx.web.annotation.Post;
 import com.dinstone.vertx.web.annotation.Produces;
 import com.dinstone.vertx.web.annotation.Put;
 
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 
 @Path("/job")
 @Produces({ "application/json" })
-public class DelayJobHandler {
-
-    private Broker broker;
+public class DelayJobHandler extends RestApiHandler {
 
     public DelayJobHandler(ApplicationContext context) {
-        broker = context.getBroker();
+        super(context);
     }
 
     @Post("/produce")
@@ -128,7 +121,6 @@ public class DelayJobHandler {
         });
     }
 
-    @SuppressWarnings("unchecked")
     @Get("/consume")
     public void consume(RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
@@ -157,12 +149,7 @@ public class DelayJobHandler {
             }
         }, false, ar -> {
             if (ar.succeeded()) {
-                JsonArray result = new JsonArray();
-                List<Job> jobs = (List<Job>) ar.result();
-                if (jobs != null) {
-                    result = new JsonArray(Json.encode(jobs));
-                }
-                success(ctx, result);
+                success(ctx, ar.result());
             } else {
                 failed(ctx, ar.cause());
             }
@@ -272,27 +259,128 @@ public class DelayJobHandler {
         });
     }
 
-    private void success(RoutingContext ctx) {
-        JsonObject res = new JsonObject().put("code", "1");
-        ctx.response().end(res.encode());
-    }
-
-    private void success(RoutingContext ctx, JsonArray result) {
-        JsonObject res = new JsonObject().put("code", "1");
-        if (result != null) {
-            res.put("result", result);
+    @Get("/peek")
+    public void peek(RoutingContext ctx) {
+        String tubeName = ctx.request().getParam("tube");
+        if (tubeName == null || tubeName.length() == 0) {
+            failed(ctx, "tube is empty");
+            return;
         }
-        ctx.response().end(res.encode());
+
+        long maxParam = 1;
+        try {
+            String param = ctx.request().getParam("max");
+            if (param != null && param.length() > 0) {
+                maxParam = Long.parseLong(param);
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+
+        final long maxCount = maxParam;
+        ctx.vertx().executeBlocking(future -> {
+            try {
+                List<Job> jobs = broker.peek(tubeName, maxCount);
+                future.complete(jobs);
+            } catch (Exception e) {
+                future.fail(e);
+            }
+        }, false, ar -> {
+            if (ar.succeeded()) {
+                success(ctx, ar.result());
+            } else {
+                failed(ctx, ar.cause());
+            }
+        });
     }
 
-    private void failed(RoutingContext ctx, String message) {
-        JsonObject res = new JsonObject().put("code", "-1").put("message", message);
-        ctx.response().end(res.encode());
+    @Put("/kick")
+    public void kick(RoutingContext ctx) {
+        String tubeName = ctx.request().getParam("tube");
+        if (tubeName == null || tubeName.length() == 0) {
+            failed(ctx, "tube is empty");
+            return;
+        }
+
+        String id = ctx.request().getParam("id");
+        if (id == null || id.length() == 0) {
+            failed(ctx, "id is empty");
+            return;
+        }
+
+        long dtr = 0;
+        if (ctx.request().getParam("dtr") != null) {
+            try {
+                dtr = Long.parseLong(ctx.request().getParam("dtr"));
+            } catch (Exception e) {
+                failed(ctx, "dtr is invalid");
+                return;
+            }
+        }
+
+        final long dtrParam = dtr;
+        ctx.vertx().executeBlocking(future -> {
+            try {
+                broker.kick(tubeName, id, dtrParam);
+
+                future.complete();
+            } catch (Exception e) {
+                future.fail(e);
+            }
+        }, false, ar -> {
+            if (ar.succeeded()) {
+                success(ctx);
+            } else {
+                failed(ctx, ar.cause());
+            }
+        });
+
     }
 
-    private void failed(RoutingContext ctx, Throwable throwable) {
-        JsonObject res = new JsonObject().put("code", "-1").put("message",
-            throwable == null ? "" : throwable.getMessage());
-        ctx.response().end(res.encode());
+    @Delete("/discard")
+    public void discard(RoutingContext ctx) {
+        String tubeName = ctx.request().getParam("tube");
+        if (tubeName == null || tubeName.length() == 0) {
+            failed(ctx, "tube is empty");
+            return;
+        }
+
+        String id = ctx.request().getParam("id");
+        if (id == null || id.length() == 0) {
+            failed(ctx, "id is empty");
+            return;
+        }
+
+        ctx.vertx().executeBlocking(future -> {
+            try {
+                broker.discard(tubeName, id);
+                future.complete();
+            } catch (Exception e) {
+                future.fail(e);
+            }
+        }, false, ar -> {
+            if (ar.succeeded()) {
+                success(ctx);
+            } else {
+                failed(ctx, ar.cause());
+            }
+        });
+    }
+
+    @Get("/tubes")
+    public void tubes(RoutingContext ctx) {
+        ctx.vertx().executeBlocking(future -> {
+            try {
+                future.complete(broker.tubeSet());
+            } catch (Exception e) {
+                future.fail(e);
+            }
+        }, false, ar -> {
+            if (ar.succeeded()) {
+                success(ctx, ar.result());
+            } else {
+                failed(ctx, ar.cause());
+            }
+        });
     }
 }

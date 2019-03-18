@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014~2017 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2019 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.dinstone.grape.server.verticle;
 
 import org.slf4j.Logger;
@@ -22,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import com.dinstone.grape.server.ApplicationContext;
 import com.dinstone.grape.server.handler.AccessLogHandler;
 import com.dinstone.grape.server.handler.DelayJobHandler;
+import com.dinstone.grape.server.handler.TubeAdminHandler;
 import com.dinstone.vertx.web.RouterBuilder;
 
 import io.vertx.core.AbstractVerticle;
@@ -64,6 +64,7 @@ public class HttpServerVerticle extends AbstractVerticle {
 
         RouterBuilder routerBuilder = RouterBuilder.create(vertx);
         routerBuilder.handler(new DelayJobHandler(context));
+        routerBuilder.handler(new TubeAdminHandler(context));
         mainRouter.mountSubRouter("/api", routerBuilder.build());
 
         int serverPort = config.getJsonObject("verticle", new JsonObject()).getInteger("http.port", 9521);

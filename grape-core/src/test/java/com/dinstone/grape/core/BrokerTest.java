@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014~2017 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2019 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@ public class BrokerTest {
             tubeManager.produce("test", new Job("Job-" + i, dtr, 30000, "hello,haha".getBytes()));
             tubeManager.produce("bt01", new Job("Job-" + i, dtr, 30000, "hello,bt01".getBytes()));
             tubeManager.produce("bt02", new Job("Job-" + i, dtr, 30000, "hello,bt01".getBytes()));
+
+            System.out.println(tubeManager.tubeStats("test").toString());
         }
 
         LOG.info("produce job for test,bt01,bt02 finish");

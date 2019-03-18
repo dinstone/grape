@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014~2017 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2019 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.dinstone.grape.core;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -39,7 +39,7 @@ public class Broker {
         this.tubeMap = new ConcurrentHashMap<>();
     }
 
-    public Tube getTube(String tubeName) {
+    private Tube getTube(String tubeName) {
         Tube tube = tubeMap.get(tubeName);
         if (tube == null) {
             createTube(tubeName);
@@ -48,6 +48,33 @@ public class Broker {
             tube = tubeMap.get(tubeName);
         }
         return tube;
+    }
+
+    public Set<String> tubeSet() {
+        Jedis jedis = jedisPool.getResource();
+        try {
+            return jedis.smembers(Tube.TUBE_SET);
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+    }
+
+    public Stats tubeStats(String tubeName) {
+        Tube tube = tubeMap.get(tubeName);
+        if (tube == null) {
+            Set<String> tubeSet = tubeSet();
+            if (tubeSet != null && tubeSet.contains(tubeName)) {
+                tube = getTube(tubeName);
+            }
+        }
+
+        if (tube != null) {
+            return tube.stats();
+        }
+
+        throw new RuntimeException("unkown tube '" + tubeName + "'");
     }
 
     public void createTube(String tubeName) {
@@ -96,8 +123,27 @@ public class Broker {
         getTube(tubeName).delete(jobId);
     }
 
-    public void release(String tubeName, String id, long dtr) {
-        getTube(tubeName).release(id, dtr);
+    public void discard(String tubeName, String jobId) {
+        getTube(tubeName).discard(jobId);
+    }
+
+    public List<Job> peek(String tubeName, long max) {
+        return getTube(tubeName).peek(max);
+    }
+
+    public void kick(String tubeName, String jobId, long dtr) {
+        getTube(tubeName).kick(jobId, dtr);
+    }
+
+    /**
+     * move the job of tube to delay queue from reserved.
+     * 
+     * @param tubeName
+     * @param jobId
+     * @param dtr
+     */
+    public void release(String tubeName, String jobId, long dtr) {
+        getTube(tubeName).release(jobId, dtr);
     }
 
     public void failure(String tubeName, String jobId) {
