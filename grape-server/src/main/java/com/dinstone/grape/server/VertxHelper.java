@@ -15,6 +15,7 @@
  */
 package com.dinstone.grape.server;
 
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
@@ -65,8 +66,12 @@ public final class VertxHelper {
 
     public static boolean deployVerticle(Vertx vertx, DeploymentOptions deployOptions, VerticleFactory factory,
             String verticleName) throws Exception {
+        Set<VerticleFactory> factories = vertx.verticleFactories();
+        if (!factories.contains(factory)) {
+            vertx.registerVerticleFactory(factory);
+        }
+
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        vertx.registerVerticleFactory(factory);
         vertx.deployVerticle(verticleName, deployOptions, deployResponse -> {
             if (deployResponse.succeeded()) {
                 LOG.info("verticle deployment is succeeded, {}:{}", verticleName, deployResponse.result());
@@ -86,11 +91,11 @@ public final class VertxHelper {
         vertx.deployVerticle(verticle, deployOptions, deployResponse -> {
             if (deployResponse.succeeded()) {
                 LOG.info("verticle deployment is succeeded, {}:{}", verticle.getClass().getName(),
-                    deployResponse.result());
+                        deployResponse.result());
                 future.complete(true);
             } else {
                 LOG.error("verticle deployment is failed, {}:{}", verticle.getClass().getName(),
-                    deployResponse.cause());
+                        deployResponse.cause());
                 future.completeExceptionally(deployResponse.cause());
             }
         });

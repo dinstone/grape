@@ -19,7 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.dinstone.grape.server.verticle.GrapeVerticleFactory;
-import com.dinstone.grape.server.verticle.HttpServerVerticle;
+import com.dinstone.grape.server.verticle.WebHttpVerticle;
+import com.dinstone.grape.server.verticle.WebRestVerticle;
 
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
@@ -34,22 +35,24 @@ public class ApplicationActivator {
 
     private ApplicationContext context;
 
-    public ApplicationActivator() {
-    }
-
     public void start() throws Exception {
-        JsonObject config = ConfigHelper.loadConfig("config-app.json");
+        JsonObject config = ConfigHelper.loadConfig("config.json");
         LOG.info("application config :\r\n{}", config.encodePrettily());
-
-        vertx = VertxHelper.createVertx(loadVertxOptions(config));
 
         context = new ApplicationContext(config);
 
+        vertx = VertxHelper.createVertx(loadVertxOptions(config));
+
         GrapeVerticleFactory factory = new GrapeVerticleFactory(context);
         JsonObject vconfig = config.getJsonObject("verticle", new JsonObject());
-        int instances = vconfig.getInteger("http.instances", Runtime.getRuntime().availableProcessors());
-        DeploymentOptions hvOptions = new DeploymentOptions().setConfig(config).setInstances(instances);
-        VertxHelper.deployVerticle(vertx, hvOptions, factory, factory.getVerticleName(HttpServerVerticle.class));
+
+        int instances = vconfig.getInteger("rest.instances", Runtime.getRuntime().availableProcessors());
+        DeploymentOptions wrOptions = new DeploymentOptions().setConfig(config).setInstances(instances);
+        VertxHelper.deployVerticle(vertx, wrOptions, factory, factory.getVerticleName(WebRestVerticle.class));
+
+        instances = vconfig.getInteger("http.instances", Runtime.getRuntime().availableProcessors());
+        DeploymentOptions whOptions = new DeploymentOptions().setConfig(config).setInstances(instances);
+        VertxHelper.deployVerticle(vertx, whOptions, factory, factory.getVerticleName(WebHttpVerticle.class));
     }
 
     public void stop() {
@@ -65,9 +68,14 @@ public class ApplicationActivator {
     private VertxOptions loadVertxOptions(JsonObject config) {
         JsonObject vertxConfig = config.getJsonObject("vertx", new JsonObject());
         VertxOptions vertxOptions = new VertxOptions().setClustered(false);
-        int blockedThreadCheckInterval = vertxConfig.getInteger("blockedThreadCheckInterval", 0);
+        int blockedThreadCheckInterval = vertxConfig.getInteger("blockedThreadCheckInterval", 1000);
         if (blockedThreadCheckInterval > 0) {
             vertxOptions.setBlockedThreadCheckInterval(blockedThreadCheckInterval);
+        }
+
+        int eventLoopPoolSize = vertxConfig.getInteger("eventLoopPoolSize", Runtime.getRuntime().availableProcessors());
+        if (eventLoopPoolSize > 0) {
+            vertxOptions.setEventLoopPoolSize(eventLoopPoolSize);
         }
 
         int workerPoolSize = vertxConfig.getInteger("workerPoolSize", Runtime.getRuntime().availableProcessors() + 1);

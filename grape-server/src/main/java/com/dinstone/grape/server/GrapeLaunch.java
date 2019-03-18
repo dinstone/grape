@@ -20,6 +20,8 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.vertx.core.logging.SLF4JLogDelegateFactory;
+
 public class GrapeLaunch {
 
     private static final Logger LOG = LoggerFactory.getLogger(GrapeLaunch.class);
@@ -28,7 +30,7 @@ public class GrapeLaunch {
 
     public static void main(String[] args) throws IOException {
         // init log delegate
-        System.setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory");
+        System.setProperty("vertx.logger-delegate-factory-class-name", SLF4JLogDelegateFactory.class.getName());
 
         // init applicationHome dir
         String applicationHome = System.getProperty(APPLICATION_HOME);

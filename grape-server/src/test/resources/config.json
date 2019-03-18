@@ -1,0 +1,26 @@
+{
+	"vertx": {
+		"workerPoolSize": 4,
+		"eventLoopPoolSize": 2,
+		"blockedThreadCheckInterval": 30000
+	},
+	"verticle": {
+		"rest.instances": 2,
+		"http.instances": 2
+	},
+	"web": {
+		"http.port": 9595,
+		"rest.port": 9521
+	},
+	"redis": {
+		"host": "127.0.0.1",
+		"port": 6379,
+		"maxTotal": 4,
+		"minIdle": 1,
+		"timeout": 2000,
+		"maxWaitMillis": 3000,
+		"numTestsPerEvictionRun": -1,
+		"minEvictableIdleTimeMillis": 60000,
+		"timeBetweenEvictionRunsMillis": 30000
+	}
+}

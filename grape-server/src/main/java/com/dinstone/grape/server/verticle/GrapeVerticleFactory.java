@@ -36,10 +36,11 @@ public class GrapeVerticleFactory implements VerticleFactory {
     @Override
     public Verticle createVerticle(String verticleName, ClassLoader classLoader) throws Exception {
         String clazz = VerticleFactory.removePrefix(verticleName);
-        if (HttpServerVerticle.class.getName().equals(clazz)) {
-            return new HttpServerVerticle(context);
+        if (WebRestVerticle.class.getName().equals(clazz)) {
+            return new WebRestVerticle(context);
+        } else if (WebHttpVerticle.class.getName().equals(clazz)) {
+            return new WebHttpVerticle(context);
         }
-
         throw new IllegalArgumentException("unsupported verticle type: " + clazz);
     }
 

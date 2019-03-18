@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 
 import com.dinstone.grape.server.ApplicationContext;
 import com.dinstone.grape.server.handler.AccessLogHandler;
-import com.dinstone.grape.server.handler.DelayJobHandler;
 import com.dinstone.grape.server.handler.TubeAdminHandler;
 import com.dinstone.vertx.web.RouterBuilder;
 
@@ -33,15 +32,15 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 
-public class HttpServerVerticle extends AbstractVerticle {
+public class WebHttpVerticle extends AbstractVerticle {
 
-    private static final Logger LOG = LoggerFactory.getLogger(HttpServerVerticle.class);
+    private static final Logger LOG = LoggerFactory.getLogger(WebHttpVerticle.class);
 
     private ApplicationContext context;
 
     private JsonObject config;
 
-    public HttpServerVerticle(ApplicationContext context) {
+    public WebHttpVerticle(ApplicationContext context) {
         this.context = context;
     }
 
@@ -63,11 +62,10 @@ public class HttpServerVerticle extends AbstractVerticle {
         mainRouter.route().handler(BodyHandler.create());
 
         RouterBuilder routerBuilder = RouterBuilder.create(vertx);
-        routerBuilder.handler(new DelayJobHandler(context));
         routerBuilder.handler(new TubeAdminHandler(context));
-        mainRouter.mountSubRouter("/api", routerBuilder.build());
+        mainRouter.mountSubRouter("/admin", routerBuilder.build());
 
-        int serverPort = config.getJsonObject("verticle", new JsonObject()).getInteger("http.port", 9521);
+        int serverPort = config.getJsonObject("web", new JsonObject()).getInteger("http.port", 9595);
         HttpServerOptions serverOptions = new HttpServerOptions().setIdleTimeout(180);
         vertx.createHttpServer(serverOptions).requestHandler(mainRouter::accept).listen(serverPort, ar -> {
             if (ar.succeeded()) {
