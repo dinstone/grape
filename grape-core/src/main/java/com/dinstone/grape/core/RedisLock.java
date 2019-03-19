@@ -52,12 +52,6 @@ public class RedisLock {
 				return true;
 			}
 
-			// // reentant lock
-			// if (lockValue.equals(jedis.get(lockKey))) {
-			// jedis.expire(lockKey, lockTimeout);
-			// return true;
-			// }
-
 			if (jedis.ttl(lockKey) == -1) {
 				jedis.expire(lockKey, lockTimeout);
 			}

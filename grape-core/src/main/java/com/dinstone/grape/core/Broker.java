@@ -33,6 +33,8 @@ public class Broker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
 
+	private static final String TUBE_SET = "tube:set";
+
 	private final JedisPool jedisPool;
 
 	private final Map<String, Tube> tubeMap;
@@ -51,7 +53,7 @@ public class Broker {
 	public Set<String> tubeSet() {
 		Jedis jedis = jedisPool.getResource();
 		try {
-			return jedis.smembers(Tube.TUBE_SET);
+			return jedis.smembers(TUBE_SET);
 		} finally {
 			if (jedis != null) {
 				jedis.close();
@@ -90,7 +92,7 @@ public class Broker {
 		LOG.info("create tube {}", tubeName);
 		Jedis jedis = jedisPool.getResource();
 		try {
-			jedis.sadd(Tube.TUBE_SET, tubeName);
+			jedis.sadd(TUBE_SET, tubeName);
 		} finally {
 			if (jedis != null) {
 				jedis.close();
@@ -161,7 +163,7 @@ public class Broker {
 
 	public void start() {
 		executor.scheduleAtFixedRate(new Runnable() {
-	
+
 			@Override
 			public void run() {
 				try {
@@ -171,7 +173,7 @@ public class Broker {
 				}
 			}
 		}, 1, 2, TimeUnit.SECONDS);
-	
+
 		LOG.info("Scheduler is started");
 	}
 
