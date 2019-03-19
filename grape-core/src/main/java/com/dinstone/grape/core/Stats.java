@@ -19,76 +19,86 @@ import java.io.Serializable;
 
 public class Stats implements Serializable {
 
-    /**
-     * 
-     */
-    private static final long serialVersionUID = 1L;
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 
-    private String tubeName;
+	private String tubeName;
 
-    private long totalJobSize;
+	private long totalJobSize;
 
-    private long finishJobSize;
+	private long finishJobSize;
 
-    private long delayQueueSize;
+	private long delayQueueSize;
 
-    private long readyQueueSize;
+	private long readyQueueSize;
 
-    private long failedQueueSize;
+	private long retainQueueSize;
 
-    public String getTubeName() {
-        return tubeName;
-    }
+	private long failedQueueSize;
 
-    public void setTubeName(String tubeName) {
-        this.tubeName = tubeName;
-    }
+	public String getTubeName() {
+		return tubeName;
+	}
 
-    public long getTotalJobSize() {
-        return totalJobSize;
-    }
+	public void setTubeName(String tubeName) {
+		this.tubeName = tubeName;
+	}
 
-    public void setTotalJobSize(long totalJobSize) {
-        this.totalJobSize = totalJobSize;
-    }
+	public long getTotalJobSize() {
+		return totalJobSize;
+	}
 
-    public long getFinishJobSize() {
-        return finishJobSize;
-    }
+	public void setTotalJobSize(long totalJobSize) {
+		this.totalJobSize = totalJobSize;
+	}
 
-    public void setFinishJobSize(long finishJobSize) {
-        this.finishJobSize = finishJobSize;
-    }
+	public long getFinishJobSize() {
+		return finishJobSize;
+	}
 
-    public long getDelayQueueSize() {
-        return delayQueueSize;
-    }
+	public void setFinishJobSize(long finishJobSize) {
+		this.finishJobSize = finishJobSize;
+	}
 
-    public void setDelayQueueSize(long delayQueueSize) {
-        this.delayQueueSize = delayQueueSize;
-    }
+	public long getDelayQueueSize() {
+		return delayQueueSize;
+	}
 
-    public long getReadyQueueSize() {
-        return readyQueueSize;
-    }
+	public void setDelayQueueSize(long delayQueueSize) {
+		this.delayQueueSize = delayQueueSize;
+	}
 
-    public void setReadyQueueSize(long readyQueueSize) {
-        this.readyQueueSize = readyQueueSize;
-    }
+	public long getReadyQueueSize() {
+		return readyQueueSize;
+	}
 
-    public long getFailedQueueSize() {
-        return failedQueueSize;
-    }
+	public void setReadyQueueSize(long readyQueueSize) {
+		this.readyQueueSize = readyQueueSize;
+	}
 
-    public void setFailedQueueSize(long failedQueueSize) {
-        this.failedQueueSize = failedQueueSize;
-    }
+	public long getFailedQueueSize() {
+		return failedQueueSize;
+	}
 
-    @Override
-    public String toString() {
-        return "Stats [tubeName=" + tubeName + ", totalJobSize=" + totalJobSize + ", finishJobSize=" + finishJobSize
-                + ", delayQueueSize=" + delayQueueSize + ", readyQueueSize=" + readyQueueSize + ", failedQueueSize="
-                + failedQueueSize + "]";
-    }
+	public void setFailedQueueSize(long failedQueueSize) {
+		this.failedQueueSize = failedQueueSize;
+	}
+
+	public long getRetainQueueSize() {
+		return retainQueueSize;
+	}
+
+	public void setRetainQueueSize(long retainQueueSize) {
+		this.retainQueueSize = retainQueueSize;
+	}
+
+	@Override
+	public String toString() {
+		return "Stats [tubeName=" + tubeName + ", totalJobSize=" + totalJobSize + ", finishJobSize=" + finishJobSize
+				+ ", delayQueueSize=" + delayQueueSize + ", readyQueueSize=" + readyQueueSize + ", retainQueueSize="
+				+ retainQueueSize + ", failedQueueSize=" + failedQueueSize + "]";
+	}
 
 }

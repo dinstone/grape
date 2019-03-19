@@ -63,6 +63,11 @@ public class Tube {
 	private final String readyQueue;
 
 	/**
+	 * retain queue type : zset
+	 */
+	private final String retainQueue;
+
+	/**
 	 * failed queue type : zset
 	 */
 	private final String failedQueue;
@@ -76,6 +81,7 @@ public class Tube {
 
 		this.delayQueue = TUBE_PREFIX + tubeName + ":queue:delay";
 		this.readyQueue = TUBE_PREFIX + tubeName + ":queue:ready";
+		this.retainQueue = TUBE_PREFIX + tubeName + ":queue:retain";
 		this.failedQueue = TUBE_PREFIX + tubeName + ":queue:failed";
 
 	}
@@ -102,6 +108,7 @@ public class Tube {
 
 			stats.setDelayQueueSize(jedis.zcard(delayQueue));
 			stats.setReadyQueueSize(jedis.zcard(readyQueue));
+			stats.setRetainQueueSize(jedis.zcard(retainQueue));
 			stats.setFailedQueueSize(jedis.zcard(failedQueue));
 
 			Map<String, String> tsMap = jedis.hgetAll(tubeStats);
@@ -126,39 +133,66 @@ public class Tube {
 	 * schedule job to ready queue
 	 */
 	public void schedule() {
-		int maxScheduleCount = 10;
-		while (maxScheduleCount > 0) {
-			Jedis jedis = jedisPool.getResource();
-			try {
-				Set<Tuple> jobScoreSet = jedis.zrangeWithScores(delayQueue, 0, 100);
-				if (jobScoreSet == null || jobScoreSet.size() == 0) {
+		Jedis jedis = jedisPool.getResource();
+		try {
+			delayToReady(jedis);
+			retainToReady(jedis);
+		} finally {
+			if (jedis != null) {
+				jedis.close();
+			}
+		}
+	}
+
+	private void retainToReady(Jedis jedis) {
+		while (true) {
+			Set<Tuple> jobScoreSet = jedis.zrangeWithScores(retainQueue, 0, 100);
+			if (jobScoreSet == null || jobScoreSet.size() == 0) {
+				break;
+			}
+
+			long currentTime = System.currentTimeMillis();
+			for (Tuple jobScore : jobScoreSet) {
+				if (jobScore.getScore() < currentTime) {
+					String jobId = jobScore.getElement();
+					String dtr = jedis.hget(jobPrefix + jobId, "dtr");
+					if (dtr == null) {
+						LOG.warn("job[{}:{}] is invalid, remove from retain queue.", tubeName, jobId);
+						jedis.zrem(retainQueue, jobId);
+						continue;
+					}
+
+					jedis.zadd(readyQueue, currentTime, jobId);
+					jedis.zrem(retainQueue, jobId);
+				} else {
 					break;
 				}
+			}
+		}
+	}
 
-				maxScheduleCount--;
+	private void delayToReady(Jedis jedis) {
+		while (true) {
+			Set<Tuple> jobScoreSet = jedis.zrangeWithScores(delayQueue, 0, 100);
+			if (jobScoreSet == null || jobScoreSet.size() == 0) {
+				break;
+			}
 
-				long currentTime = System.currentTimeMillis();
-				for (Tuple jobScore : jobScoreSet) {
-					if (jobScore.getScore() < currentTime) {
-						String jobId = jobScore.getElement();
-						String dtr = jedis.hget(jobPrefix + jobId, "dtr");
-						if (dtr == null) {
-							LOG.warn("job[{}:{}] is invalid, remove from delay queue.", tubeName, jobId);
-							jedis.zrem(delayQueue, jobId);
-							continue;
-						}
-
-						double score = currentTime + ONE_YEAR_MS + Long.parseLong(dtr);
-						jedis.zadd(delayQueue, score, jobId);
-
-						jedis.zadd(readyQueue, currentTime, jobId);
-					} else {
-						break;
+			long currentTime = System.currentTimeMillis();
+			for (Tuple jobScore : jobScoreSet) {
+				if (jobScore.getScore() < currentTime) {
+					String jobId = jobScore.getElement();
+					String dtr = jedis.hget(jobPrefix + jobId, "dtr");
+					if (dtr == null) {
+						LOG.warn("job[{}:{}] is invalid, remove from delay queue.", tubeName, jobId);
+						jedis.zrem(delayQueue, jobId);
+						continue;
 					}
-				}
-			} finally {
-				if (jedis != null) {
-					jedis.close();
+
+					jedis.zadd(readyQueue, currentTime, jobId);
+					jedis.zrem(delayQueue, jobId);
+				} else {
+					break;
 				}
 			}
 		}
@@ -170,7 +204,7 @@ public class Tube {
 	 * @param job
 	 * @return
 	 */
-	public Tube produce(Job job) {
+	public boolean produce(Job job) {
 		Jedis jedis = jedisPool.getResource();
 		try {
 			if (jedis.zscore(delayQueue, job.getId()) == null) {
@@ -181,6 +215,7 @@ public class Tube {
 				long uc = jedis.zadd(delayQueue, score, job.getId());
 				if (uc > 0) {
 					jedis.hincrBy(tubeStats, "tjs", 1);
+					return true;
 				}
 			}
 		} finally {
@@ -189,25 +224,23 @@ public class Tube {
 			}
 		}
 
-		return this;
+		return false;
 	}
 
 	/**
-	 * the job is success, delete job from tube's delay and ready queue.
+	 * the job is success, delete job from tube's delay queue.
 	 * 
 	 * @param jobId
 	 * @return
 	 */
-	public Tube delete(String jobId) {
+	public boolean delete(String jobId) {
 		Jedis jedis = jedisPool.getResource();
 		try {
-			long uc = jedis.del(jobPrefix + jobId);
-			if (uc > 0) {
-				// delete from delay queue
-				jedis.zrem(delayQueue, jobId);
-				jedis.zrem(readyQueue, jobId);
-
+			// delete from delay queue
+			if (jedis.zrem(delayQueue, jobId) > 0) {
+				jedis.del(jobPrefix + jobId);
 				jedis.hincrBy(tubeStats, "fjs", 1);
+				return true;
 			}
 		} finally {
 			if (jedis != null) {
@@ -215,7 +248,7 @@ public class Tube {
 			}
 		}
 
-		return this;
+		return false;
 	}
 
 	/**
@@ -232,9 +265,9 @@ public class Tube {
 			for (String jobId : jobSet) {
 				Map<String, String> jobMap = jedis.hgetAll(jobPrefix + jobId);
 				if (jobMap == null || jobMap.get("id") == null) {
-					LOG.warn("job[{}:{}] is invalid, remove from delay and ready queue.", tubeName, jobId);
+					LOG.warn("job[{}:{}] is invalid, remove from ready queue.", tubeName, jobId);
 					// delete from delay queue
-					jedis.zrem(delayQueue, jobId);
+					// jedis.zrem(delayQueue, jobId);
 					jedis.zrem(readyQueue, jobId);
 				} else {
 					jedis.hincrBy(jobPrefix + jobId, "noe", 1);
@@ -249,7 +282,7 @@ public class Tube {
 					}
 
 					double score = System.currentTimeMillis() + job.getTtr();
-					jedis.zadd(delayQueue, score, jobId);
+					jedis.zadd(retainQueue, score, jobId);
 					jedis.zrem(readyQueue, jobId);
 
 					jobs.add(job);
@@ -264,19 +297,25 @@ public class Tube {
 	}
 
 	/**
-	 * release a job to delay queue with the new dtr.
+	 * release a job to delay queue from retain queue.
 	 * 
 	 * @param jobId
 	 * @param dtr
 	 * @return
 	 */
-	public Tube release(String jobId, long dtr) {
+	public boolean release(String jobId, long dtr) {
 		Jedis jedis = jedisPool.getResource();
 		try {
+			if (jedis.zscore(retainQueue, jobId) == null) {
+				return false;
+			}
+
 			if (jedis.exists(jobPrefix + jobId)) {
 				jedis.hset(jobPrefix + jobId, "dtr", Long.toString(dtr));
 				double score = System.currentTimeMillis() + dtr;
 				jedis.zadd(delayQueue, score, jobId);
+				jedis.zrem(retainQueue, jobId);
+				return true;
 			}
 		} finally {
 			if (jedis != null) {
@@ -284,36 +323,60 @@ public class Tube {
 			}
 		}
 
-		return this;
+		return false;
 	}
 
 	/**
-	 * the job is failure, move the job to failed queue.
+	 * the job is success, finish the job.
 	 * 
 	 * @param jobId
 	 * @return
 	 */
-	public Tube failure(String jobId) {
+	public boolean finish(String jobId) {
 		Jedis jedis = jedisPool.getResource();
 		try {
-			if (jedis.exists(jobPrefix + jobId)) {
-				double score = System.currentTimeMillis();
-				jedis.zadd(failedQueue, score, jobId);
-
-				// delete from delay queue
-				jedis.zrem(delayQueue, jobId);
-				jedis.zrem(readyQueue, jobId);
+			if (jedis.zrem(retainQueue, jobId) > 0) {
+				jedis.del(jobPrefix + jobId);
+				jedis.hincrBy(tubeStats, "fjs", 1);
+				return true;
 			}
 		} finally {
 			if (jedis != null) {
 				jedis.close();
 			}
 		}
-		return this;
+		return false;
 	}
 
 	/**
-	 * peek the failed job to consume it.
+	 * the job is failure, move the job from retain to failed queue.
+	 * 
+	 * @param jobId
+	 * @return
+	 */
+	public boolean failure(String jobId) {
+		Jedis jedis = jedisPool.getResource();
+		try {
+			if (jedis.zscore(retainQueue, jobId) == null) {
+				return false;
+			}
+
+			if (jedis.exists(jobPrefix + jobId)) {
+				double score = System.currentTimeMillis();
+				jedis.zadd(failedQueue, score, jobId);
+				jedis.zrem(retainQueue, jobId);
+				return true;
+			}
+		} finally {
+			if (jedis != null) {
+				jedis.close();
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * fetch the failed job to peek it.
 	 * 
 	 * @param max
 	 * @return
@@ -327,7 +390,7 @@ public class Tube {
 				Map<String, String> jobMap = jedis.hgetAll(jobPrefix + jobId);
 				if (jobMap == null || jobMap.get("id") == null) {
 					LOG.warn("job[{}:{}] is invalid, remove from failed queue.", tubeName, jobId);
-					jedis.zrem(failedQueue, jobId);
+					discard(jobId);
 				} else {
 					Job job = null;
 					try {
@@ -337,7 +400,6 @@ public class Tube {
 						discard(jobId);
 						continue;
 					}
-
 					jobs.add(job);
 				}
 			}
@@ -355,22 +417,20 @@ public class Tube {
 	 * @param jobId
 	 * @return
 	 */
-	public Tube discard(String jobId) {
+	public boolean discard(String jobId) {
 		Jedis jedis = jedisPool.getResource();
 		try {
-			long dc = jedis.zrem(failedQueue, jobId);
-			if (dc > 0) {
+			if (jedis.zrem(failedQueue, jobId) > 0) {
 				jedis.del(jobPrefix + jobId);
-
 				jedis.hincrBy(tubeStats, "fjs", 1);
+				return true;
 			}
 		} finally {
 			if (jedis != null) {
 				jedis.close();
 			}
 		}
-
-		return this;
+		return false;
 	}
 
 	/**
@@ -380,15 +440,19 @@ public class Tube {
 	 * @param dtr
 	 * @return
 	 */
-	public Tube kick(String jobId, long dtr) {
+	public boolean kick(String jobId, long dtr) {
 		Jedis jedis = jedisPool.getResource();
 		try {
+			if (jedis.zscore(failedQueue, jobId) == null) {
+				return false;
+			}
+
 			if (jedis.exists(jobPrefix + jobId)) {
-				jedis.hset(jobPrefix + jobId, "dtr", "" + dtr);
+				jedis.hset(jobPrefix + jobId, "dtr", Long.toString(dtr));
 				double score = System.currentTimeMillis() + dtr;
 				jedis.zadd(delayQueue, score, jobId);
-
 				jedis.zrem(failedQueue, jobId);
+				return true;
 			}
 		} finally {
 			if (jedis != null) {
@@ -396,7 +460,7 @@ public class Tube {
 			}
 		}
 
-		return this;
+		return false;
 	}
 
 	private Map<String, String> job2Map(Job job) {

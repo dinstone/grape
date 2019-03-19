@@ -15,6 +15,7 @@
  */
 package com.dinstone.grape.core;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -100,18 +101,21 @@ public class Broker {
 		}
 	}
 
-	public void produce(String tubeName, Job job) {
+	public boolean produce(String tubeName, Job job) {
 		if (tubeName == null || tubeName.length() == 0) {
 			throw new IllegalArgumentException("tubeName is empty");
 		}
-
-		getTube(tubeName).produce(job);
+		if (job.getTtr() < 1000) {
+			job.setTtr(1000);
+		}
+		return getTube(tubeName).produce(job);
 	}
 
-	public void delete(String tubeName, String jobId) {
-		getTube(tubeName).delete(jobId);
+	public boolean delete(String tubeName, String jobId) {
+		return getTube(tubeName).delete(jobId);
 	}
 
+	@SuppressWarnings("unchecked")
 	public List<Job> consume(String tubeName, long max) {
 		if (max < 1) {
 			max = 1;
@@ -127,23 +131,23 @@ public class Broker {
 			}
 		}
 
-		return null;
+		return Collections.EMPTY_LIST;
 	}
 
-	public void finish(String tubeName, String jobId) {
-		getTube(tubeName).delete(jobId);
+	public boolean finish(String tubeName, String jobId) {
+		return getTube(tubeName).finish(jobId);
 	}
 
-	public void discard(String tubeName, String jobId) {
-		getTube(tubeName).discard(jobId);
+	public boolean discard(String tubeName, String jobId) {
+		return getTube(tubeName).discard(jobId);
 	}
 
 	public List<Job> peek(String tubeName, long max) {
 		return getTube(tubeName).peek(max);
 	}
 
-	public void kick(String tubeName, String jobId, long dtr) {
-		getTube(tubeName).kick(jobId, dtr);
+	public boolean kick(String tubeName, String jobId, long dtr) {
+		return getTube(tubeName).kick(jobId, dtr);
 	}
 
 	/**
@@ -152,13 +156,14 @@ public class Broker {
 	 * @param tubeName
 	 * @param jobId
 	 * @param dtr
+	 * @return
 	 */
-	public void release(String tubeName, String jobId, long dtr) {
-		getTube(tubeName).release(jobId, dtr);
+	public boolean release(String tubeName, String jobId, long dtr) {
+		return getTube(tubeName).release(jobId, dtr);
 	}
 
-	public void failure(String tubeName, String jobId) {
-		getTube(tubeName).failure(jobId);
+	public boolean failure(String tubeName, String jobId) {
+		return getTube(tubeName).failure(jobId);
 	}
 
 	public void start() {
