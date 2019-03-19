@@ -25,27 +25,29 @@ import redis.clients.jedis.JedisPool;
 
 public class BrokerTest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(BrokerTest.class);
+	private static final Logger LOG = LoggerFactory.getLogger(BrokerTest.class);
 
-    @Test
-    public void test() throws IOException {
-        JedisPool jedisPool = new JedisPool("127.0.0.1", 6379);
-        Broker tubeManager = new Broker(jedisPool);
+	@Test
+	public void test() throws IOException {
+		JedisPool jedisPool = new JedisPool("127.0.0.1", 6379);
+		Broker tubeManager = new Broker(jedisPool);
+		tubeManager.start();
 
-        LOG.info("produce job for test,bt01,bt02 begin");
+		LOG.info("produce job for test,bt01,bt02 begin");
 
-        for (int i = 0; i < 100000; i++) {
-            int dtr = ((i / 1000) + 3) * 1000;
-            tubeManager.produce("test", new Job("Job-" + i, dtr, 30000, "hello,haha".getBytes()));
-            tubeManager.produce("bt01", new Job("Job-" + i, dtr, 30000, "hello,bt01".getBytes()));
-            tubeManager.produce("bt02", new Job("Job-" + i, dtr, 30000, "hello,bt01".getBytes()));
+		for (int i = 0; i < 100000; i++) {
+			int dtr = ((i / 1000) + 3) * 1000;
+			tubeManager.produce("test", new Job("Job-" + i, dtr, 30000, "hello,haha".getBytes()));
+			tubeManager.produce("bt01", new Job("Job-" + i, dtr, 30000, "hello,bt01".getBytes()));
+			tubeManager.produce("bt02", new Job("Job-" + i, dtr, 30000, "hello,bt01".getBytes()));
 
-            System.out.println(tubeManager.tubeStats("test").toString());
-        }
+			System.out.println(tubeManager.tubeStats("test").toString());
+		}
 
-        LOG.info("produce job for test,bt01,bt02 finish");
+		LOG.info("produce job for test,bt01,bt02 finish");
 
-        jedisPool.destroy();
-    }
+		tubeManager.stop();
+		jedisPool.destroy();
+	}
 
 }

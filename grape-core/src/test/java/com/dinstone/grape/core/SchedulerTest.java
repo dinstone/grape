@@ -16,36 +16,54 @@
 package com.dinstone.grape.core;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.dinstone.grape.core.Scheduler;
-
-import redis.clients.jedis.JedisPool;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class SchedulerTest {
 
-    public static void main(String[] args) {
-        JedisPool jedisPool = new JedisPool("127.0.0.1", 6379);
+	public static void main(String[] args) throws IOException, InterruptedException {
+		ScheduledExecutorService ses = Executors.newScheduledThreadPool(3);
 
-        List<Scheduler> schedulers = new ArrayList<>(3);
-        for (int i = 0; i < 3; i++) {
-            Scheduler scheduler = new Scheduler(jedisPool);
-            scheduler.start();
-            schedulers.add(scheduler);
-        }
+		fixRate(ses);
+		fixDelay(ses);
 
-        try {
-            System.in.read();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+		System.in.read();
 
-        for (Scheduler scheduler : schedulers) {
-            scheduler.stop();
-        }
+		ses.shutdown();
 
-        jedisPool.destroy();
-    }
+		ses.awaitTermination(1, TimeUnit.HOURS);
+	}
+
+	private static void fixDelay(ScheduledExecutorService ses) {
+		ses.scheduleWithFixedDelay(new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					System.out.println(System.currentTimeMillis() + " : B");
+					TimeUnit.SECONDS.sleep(3);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}, 1, 2, TimeUnit.SECONDS);
+	}
+
+	private static void fixRate(ScheduledExecutorService ses) {
+		ses.scheduleAtFixedRate(new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					System.out.println(System.currentTimeMillis() + " : A");
+					TimeUnit.SECONDS.sleep(1);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
+			}
+		}, 1, 2, TimeUnit.SECONDS);
+	}
 
 }

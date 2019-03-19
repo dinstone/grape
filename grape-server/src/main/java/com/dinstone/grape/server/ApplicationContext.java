@@ -16,7 +16,6 @@
 package com.dinstone.grape.server;
 
 import com.dinstone.grape.core.Broker;
-import com.dinstone.grape.core.Scheduler;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.shareddata.Shareable;
@@ -26,82 +25,55 @@ import redis.clients.jedis.Protocol;
 
 public class ApplicationContext implements Shareable {
 
-    private final JsonObject config;
+	private final JedisPool jedisPool;
 
-    private JedisPool jedisPool;
+	private final Broker broker;
 
-    private Scheduler scheduler;
+	public ApplicationContext(JsonObject config) {
 
-    private Broker broker;
+		this.jedisPool = initJedisPool(config);
 
-    public ApplicationContext(JsonObject config) {
-        this.config = config;
+		this.broker = new Broker(jedisPool);
+		this.broker.start();
+	}
 
-        this.jedisPool = initJedisPool(config);
+	private JedisPool initJedisPool(JsonObject config) {
+		JsonObject redisConfig = config.getJsonObject("redis");
 
-        this.broker = new Broker(jedisPool);
+		JedisPoolConfig jedisConfig = new JedisPoolConfig();
+		jedisConfig.setTestOnBorrow(true);
+		jedisConfig.setTestWhileIdle(true);
+		jedisConfig.setMinIdle(redisConfig.getInteger("minIdle", 1));
+		jedisConfig.setMaxTotal(redisConfig.getInteger("maxTotal", 4));
+		jedisConfig.setMaxWaitMillis(redisConfig.getLong("maxWaitMillis", 3000L));
+		jedisConfig.setNumTestsPerEvictionRun(redisConfig.getInteger("numTestsPerEvictionRun", -1));
+		jedisConfig.setMinEvictableIdleTimeMillis(redisConfig.getLong("minEvictableIdleTimeMillis", 60000L));
+		jedisConfig.setTimeBetweenEvictionRunsMillis(redisConfig.getLong("timeBetweenEvictionRunsMillis", 30000L));
 
-        this.scheduler = new Scheduler(jedisPool);
-        this.scheduler.start();
-    }
+		if (redisConfig.containsKey("auth")) {
+			return new JedisPool(jedisConfig, redisConfig.getString("host"), redisConfig.getInteger("port"),
+					redisConfig.getInteger("timeout", Protocol.DEFAULT_TIMEOUT), redisConfig.getString("auth"));
+		} else {
+			return new JedisPool(jedisConfig, redisConfig.getString("host"), redisConfig.getInteger("port"),
+					redisConfig.getInteger("timeout", Protocol.DEFAULT_TIMEOUT));
+		}
+	}
 
-    private JedisPool initJedisPool(JsonObject config) {
-        JsonObject redisConfig = config.getJsonObject("redis");
+	public void destroy() {
+		if (broker != null) {
+			broker.stop();
+		}
+		if (jedisPool != null) {
+			jedisPool.destroy();
+		}
+	}
 
-        JedisPoolConfig jedisConfig = new JedisPoolConfig();
-        jedisConfig.setTestOnBorrow(true);
-        jedisConfig.setTestWhileIdle(true);
-        jedisConfig.setMaxTotal(redisConfig.getInteger("maxTotal", 4));
-        jedisConfig.setMinIdle(redisConfig.getInteger("minIdle", 1));
-        jedisConfig.setMaxWaitMillis(redisConfig.getLong("maxWaitMillis", 3000L));
-        jedisConfig.setMinEvictableIdleTimeMillis(redisConfig.getLong("minEvictableIdleTimeMillis", 60000L));
-        jedisConfig.setTimeBetweenEvictionRunsMillis(redisConfig.getLong("timeBetweenEvictionRunsMillis", 30000L));
-        jedisConfig.setNumTestsPerEvictionRun(redisConfig.getInteger("numTestsPerEvictionRun", -1));
+	public JedisPool getJedisPool() {
+		return jedisPool;
+	}
 
-        if (redisConfig.containsKey("auth")) {
-            return new JedisPool(jedisConfig, redisConfig.getString("host"), redisConfig.getInteger("port"),
-                    redisConfig.getInteger("timeout", Protocol.DEFAULT_TIMEOUT), redisConfig.getString("auth"));
-        } else {
-            return new JedisPool(jedisConfig, redisConfig.getString("host"), redisConfig.getInteger("port"),
-                    redisConfig.getInteger("timeout", Protocol.DEFAULT_TIMEOUT));
-        }
-    }
-
-    public void destroy() {
-        if (scheduler != null) {
-            scheduler.stop();
-        }
-        if (jedisPool != null) {
-            jedisPool.destroy();
-        }
-    }
-
-    public JedisPool getJedisPool() {
-        return jedisPool;
-    }
-
-    public void setJedisPool(JedisPool jedisPool) {
-        this.jedisPool = jedisPool;
-    }
-
-    public Scheduler getScheduler() {
-        return scheduler;
-    }
-
-    public void setScheduler(Scheduler scheduler) {
-        this.scheduler = scheduler;
-    }
-
-    public Broker getBroker() {
-        return broker;
-    }
-
-    public void setBroker(Broker broker) {
-        this.broker = broker;
-    }
-
-    public JsonObject getConfig() {
-        return config;
-    }
+	public Broker getBroker() {
+		return broker;
+	}
 
 }

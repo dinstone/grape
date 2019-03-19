@@ -22,69 +22,72 @@ import redis.clients.jedis.JedisPool;
 
 public class RedisLock {
 
-    private final JedisPool jedisPool;
+	private final JedisPool jedisPool;
 
-    private final int lockTimeout;
+	private final int lockTimeout;
 
-    private final String lockKey;
+	private final String lockKey;
 
-    private volatile String lockValue;
+	private final String lockValue = UUID.randomUUID().toString();
 
-    public RedisLock(JedisPool jedisPool, String lockKey, int lockTimeout) {
-        if (jedisPool == null) {
-            throw new IllegalArgumentException("jedisPool is null");
-        }
-        if (lockKey == null || lockKey.length() == 0) {
-            throw new IllegalArgumentException("lockKey is empty");
-        }
+	public RedisLock(JedisPool jedisPool, String lockKey, int lockTimeout) {
+		if (jedisPool == null) {
+			throw new IllegalArgumentException("jedisPool is null");
+		}
+		if (lockKey == null || lockKey.length() == 0) {
+			throw new IllegalArgumentException("lockKey is empty");
+		}
 
-        this.jedisPool = jedisPool;
-        this.lockKey = lockKey;
-        this.lockTimeout = lockTimeout;
-    }
+		this.jedisPool = jedisPool;
+		this.lockKey = lockKey;
+		this.lockTimeout = lockTimeout;
+	}
 
-    public boolean acquire() {
-        Jedis jedis = null;
-        try {
-            jedis = jedisPool.getResource();
-            String identifier = UUID.randomUUID().toString();
-            if (jedis.setnx(lockKey, identifier) == 1) {
-                jedis.expire(lockKey, lockTimeout);
-                lockValue = identifier;
-                return true;
-            }
+	public boolean acquire() {
+		Jedis jedis = null;
+		try {
+			jedis = jedisPool.getResource();
+			if (jedis.setnx(lockKey, lockValue) == 1) {
+				jedis.expire(lockKey, lockTimeout);
+				return true;
+			}
 
-            if (jedis.ttl(lockKey) == -1) {
-                jedis.expire(lockKey, lockTimeout);
-            }
-            return false;
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-    }
+			// // reentant lock
+			// if (lockValue.equals(jedis.get(lockKey))) {
+			// jedis.expire(lockKey, lockTimeout);
+			// return true;
+			// }
 
-    public boolean release() {
-        if (lockValue == null) {
-            return false;
-        }
+			if (jedis.ttl(lockKey) == -1) {
+				jedis.expire(lockKey, lockTimeout);
+			}
+			return false;
+		} finally {
+			if (jedis != null) {
+				jedis.close();
+			}
+		}
+	}
 
-        Jedis jedis = null;
-        try {
-            jedis = jedisPool.getResource();
-            if (lockValue.equals(jedis.get(lockKey))) {
-                jedis.del(lockKey);
-                lockValue = null;
-                return true;
-            }
-            return false;
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
+	public boolean release() {
+		if (lockValue == null) {
+			return false;
+		}
 
-    }
+		Jedis jedis = null;
+		try {
+			jedis = jedisPool.getResource();
+			if (lockValue.equals(jedis.get(lockKey))) {
+				jedis.del(lockKey);
+				return true;
+			}
+			return false;
+		} finally {
+			if (jedis != null) {
+				jedis.close();
+			}
+		}
+
+	}
 
 }
