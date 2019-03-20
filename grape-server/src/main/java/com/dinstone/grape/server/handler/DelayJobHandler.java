@@ -75,9 +75,7 @@ public class DelayJobHandler extends RestApiHandler {
 
         ctx.vertx().executeBlocking(future -> {
             try {
-                broker.produce(tubeName, job);
-
-                future.complete();
+                future.complete(broker.produce(tubeName, job));
             } catch (Exception e) {
                 future.fail(e);
             }
@@ -107,8 +105,7 @@ public class DelayJobHandler extends RestApiHandler {
 
         ctx.vertx().executeBlocking(future -> {
             try {
-                broker.delete(tubeName, id);
-                future.complete();
+                future.complete(broker.delete(tubeName, id));
             } catch (Exception e) {
                 future.fail(e);
             }
@@ -172,8 +169,7 @@ public class DelayJobHandler extends RestApiHandler {
 
         ctx.vertx().executeBlocking(future -> {
             try {
-                broker.finish(tubeName, id);
-                future.complete();
+                future.complete(broker.finish(tubeName, id));
             } catch (Exception e) {
                 future.fail(e);
             }
@@ -213,9 +209,7 @@ public class DelayJobHandler extends RestApiHandler {
         final long dtrParam = dtr;
         ctx.vertx().executeBlocking(future -> {
             try {
-                broker.release(tubeName, id, dtrParam);
-
-                future.complete();
+                future.complete(broker.release(tubeName, id, dtrParam));
             } catch (Exception e) {
                 future.fail(e);
             }
@@ -245,8 +239,7 @@ public class DelayJobHandler extends RestApiHandler {
 
         ctx.vertx().executeBlocking(future -> {
             try {
-                broker.failure(tubeName, id);
-                future.complete();
+                future.complete(broker.failure(tubeName, id));
             } catch (Exception e) {
                 future.fail(e);
             }
@@ -321,9 +314,7 @@ public class DelayJobHandler extends RestApiHandler {
         final long dtrParam = dtr;
         ctx.vertx().executeBlocking(future -> {
             try {
-                broker.kick(tubeName, id, dtrParam);
-
-                future.complete();
+                future.complete(broker.kick(tubeName, id, dtrParam));
             } catch (Exception e) {
                 future.fail(e);
             }
@@ -353,8 +344,7 @@ public class DelayJobHandler extends RestApiHandler {
 
         ctx.vertx().executeBlocking(future -> {
             try {
-                broker.discard(tubeName, id);
-                future.complete();
+                future.complete(broker.discard(tubeName, id));
             } catch (Exception e) {
                 future.fail(e);
             }

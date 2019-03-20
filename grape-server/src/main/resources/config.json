@@ -6,7 +6,7 @@
 	},
 	"verticle": {
 		"rest.instances": 2,
-		"http.instances": 2
+		"http.instances": 0
 	},
 	"web": {
 		"http.port": 9595,

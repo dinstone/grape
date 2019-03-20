@@ -56,7 +56,7 @@ public class TubeAdminHandler extends RestApiHandler {
         }
         ctx.vertx().executeBlocking(future -> {
             try {
-                future.complete(broker.tubeStats(tubeName));
+                future.complete(broker.stats(tubeName));
             } catch (Exception e) {
                 future.fail(e);
             }

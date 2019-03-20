@@ -33,8 +33,7 @@ public class ApplicationContext implements Shareable {
 
 		this.jedisPool = initJedisPool(config);
 
-		this.broker = new Broker(jedisPool);
-		this.broker.start();
+		this.broker = new Broker(jedisPool).start();
 	}
 
 	private JedisPool initJedisPool(JsonObject config) {

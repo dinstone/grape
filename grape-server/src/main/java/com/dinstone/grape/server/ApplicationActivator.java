@@ -39,6 +39,13 @@ public class ApplicationActivator {
         JsonObject config = ConfigHelper.loadConfig("config.json");
         LOG.info("application config :\r\n{}", config.encodePrettily());
 
+        JsonObject webConfig = config.getJsonObject("web", new JsonObject());
+        int restPort = webConfig.getInteger("rest.port", 9521);
+        int httpPort = webConfig.getInteger("http.port", 9595);
+        if (httpPort == restPort) {
+            throw new IllegalStateException("rest.port==http.port");
+        }
+
         context = new ApplicationContext(config);
 
         vertx = VertxHelper.createVertx(loadVertxOptions(config));
@@ -51,8 +58,10 @@ public class ApplicationActivator {
         VertxHelper.deployVerticle(vertx, wrOptions, factory, factory.getVerticleName(WebRestVerticle.class));
 
         instances = vconfig.getInteger("http.instances", Runtime.getRuntime().availableProcessors());
-        DeploymentOptions whOptions = new DeploymentOptions().setConfig(config).setInstances(instances);
-        VertxHelper.deployVerticle(vertx, whOptions, factory, factory.getVerticleName(WebHttpVerticle.class));
+        if (instances > 0) {
+            DeploymentOptions whOptions = new DeploymentOptions().setConfig(config).setInstances(instances);
+            VertxHelper.deployVerticle(vertx, whOptions, factory, factory.getVerticleName(WebHttpVerticle.class));
+        }
     }
 
     public void stop() {

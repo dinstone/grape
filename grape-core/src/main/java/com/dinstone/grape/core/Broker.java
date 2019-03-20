@@ -32,195 +32,209 @@ import redis.clients.jedis.JedisPool;
 
 public class Broker {
 
-	private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
 
-	private static final String TUBE_SET = "tube:set";
+    private static final String TUBE_SET = "tube:set";
 
-	private final JedisPool jedisPool;
+    private final JedisPool jedisPool;
 
-	private final Map<String, Tube> tubeMap;
+    private final Map<String, Tube> tubeMap;
 
-	private final Map<String, Runnable> taskMap;
+    private final Map<String, Runnable> taskMap;
 
-	private final ScheduledExecutorService executor;
+    private final ScheduledExecutorService executor;
 
-	public Broker(JedisPool jedisPool) {
-		this.jedisPool = jedisPool;
-		this.tubeMap = new ConcurrentHashMap<>();
-		this.taskMap = new ConcurrentHashMap<>();
-		this.executor = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
-	}
+    public Broker(JedisPool jedisPool) {
+        this(jedisPool, 2);
+    }
 
-	public Set<String> tubeSet() {
-		Jedis jedis = jedisPool.getResource();
-		try {
-			return jedis.smembers(TUBE_SET);
-		} finally {
-			if (jedis != null) {
-				jedis.close();
-			}
-		}
-	}
+    public Broker(JedisPool jedisPool, int scheduledSize) {
+        if (jedisPool == null) {
+            throw new NullPointerException("jedisPool is null");
+        }
+        if (scheduledSize <= 0) {
+            throw new IllegalArgumentException("scheduledSize must be greater than 0");
+        }
+        this.jedisPool = jedisPool;
+        this.tubeMap = new ConcurrentHashMap<>();
+        this.taskMap = new ConcurrentHashMap<>();
+        this.executor = Executors.newScheduledThreadPool(scheduledSize);
+    }
 
-	public Tube getTube(String tubeName) {
-		Tube tube = tubeMap.get(tubeName);
-		if (tube == null) {
-			createTube(tubeName);
-			tube = new Tube(tubeName, jedisPool);
-			tubeMap.putIfAbsent(tubeName, tube);
-			tube = tubeMap.get(tubeName);
-		}
-		return tube;
-	}
+    public Set<String> tubeSet() {
+        Jedis jedis = jedisPool.getResource();
+        try {
+            return jedis.smembers(TUBE_SET);
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+    }
 
-	public Stats tubeStats(String tubeName) {
-		Tube tube = tubeMap.get(tubeName);
-		if (tube == null) {
-			Set<String> tubeSet = tubeSet();
-			if (tubeSet != null && tubeSet.contains(tubeName)) {
-				tube = getTube(tubeName);
-			}
-		}
+    public Stats stats(String tubeName) {
+        return loadTube(tubeName).stats();
+    }
 
-		if (tube != null) {
-			return tube.stats();
-		}
+    private Tube loadTube(String tubeName) {
+        Tube tube = tubeMap.get(tubeName);
+        if (tube != null) {
+            return tube;
+        }
+        Set<String> tubeSet = tubeSet();
+        if (tubeSet.contains(tubeName)) {
+            return createTube(tubeName);
+        }
 
-		throw new RuntimeException("unkown tube '" + tubeName + "'");
-	}
+        throw new RuntimeException("unkown tube '" + tubeName + "'");
+    }
 
-	public void createTube(String tubeName) {
-		LOG.info("create tube {}", tubeName);
-		Jedis jedis = jedisPool.getResource();
-		try {
-			jedis.sadd(TUBE_SET, tubeName);
-		} finally {
-			if (jedis != null) {
-				jedis.close();
-			}
-		}
-	}
+    private Tube createTube(String tubeName) {
+        Tube tube = tubeMap.get(tubeName);
+        if (tube == null) {
+            addTube(tubeName);
+            tube = new Tube(tubeName, jedisPool);
+            tubeMap.putIfAbsent(tubeName, tube);
+            tube = tubeMap.get(tubeName);
+        }
+        return tube;
+    }
 
-	public boolean produce(String tubeName, Job job) {
-		if (tubeName == null || tubeName.length() == 0) {
-			throw new IllegalArgumentException("tubeName is empty");
-		}
-		if (job.getTtr() < 1000) {
-			job.setTtr(1000);
-		}
-		return getTube(tubeName).produce(job);
-	}
+    private void addTube(String tubeName) {
+        LOG.info("add tube {}", tubeName);
+        Jedis jedis = jedisPool.getResource();
+        try {
+            jedis.sadd(TUBE_SET, tubeName);
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+    }
 
-	public boolean delete(String tubeName, String jobId) {
-		return getTube(tubeName).delete(jobId);
-	}
+    public boolean produce(String tubeName, Job job) {
+        if (tubeName == null || tubeName.length() == 0) {
+            throw new IllegalArgumentException("tubeName is empty");
+        }
+        if (job.getTtr() < 1000) {
+            job.setTtr(1000);
+        }
+        return createTube(tubeName).produce(job);
+    }
 
-	@SuppressWarnings("unchecked")
-	public List<Job> consume(String tubeName, long max) {
-		if (max < 1) {
-			max = 1;
-		}
+    public boolean delete(String tubeName, String jobId) {
+        return loadTube(tubeName).delete(jobId);
+    }
 
-		RedisLock consumeLock = new RedisLock(jedisPool, "lock:consume:" + tubeName, 30);
-		if (consumeLock.acquire()) {
-			try {
-				Tube tube = getTube(tubeName);
-				return tube.consume(max);
-			} finally {
-				consumeLock.release();
-			}
-		}
+    @SuppressWarnings("unchecked")
+    public List<Job> consume(String tubeName, long max) {
+        if (max < 1) {
+            max = 1;
+        }
 
-		return Collections.EMPTY_LIST;
-	}
+        Tube tube = loadTube(tubeName);
 
-	public boolean finish(String tubeName, String jobId) {
-		return getTube(tubeName).finish(jobId);
-	}
+        RedisLock consumeLock = new RedisLock(jedisPool, "lock:consume:" + tubeName, 30);
+        if (consumeLock.acquire()) {
+            try {
+                return tube.consume(max);
+            } finally {
+                consumeLock.release();
+            }
+        }
 
-	public boolean discard(String tubeName, String jobId) {
-		return getTube(tubeName).discard(jobId);
-	}
+        return Collections.EMPTY_LIST;
+    }
 
-	public List<Job> peek(String tubeName, long max) {
-		return getTube(tubeName).peek(max);
-	}
+    public boolean finish(String tubeName, String jobId) {
+        return loadTube(tubeName).finish(jobId);
+    }
 
-	public boolean kick(String tubeName, String jobId, long dtr) {
-		return getTube(tubeName).kick(jobId, dtr);
-	}
+    public boolean discard(String tubeName, String jobId) {
+        return loadTube(tubeName).discard(jobId);
+    }
 
-	/**
-	 * move the job of tube to delay queue from reserved.
-	 * 
-	 * @param tubeName
-	 * @param jobId
-	 * @param dtr
-	 * @return
-	 */
-	public boolean release(String tubeName, String jobId, long dtr) {
-		return getTube(tubeName).release(jobId, dtr);
-	}
+    public List<Job> peek(String tubeName, long max) {
+        return loadTube(tubeName).peek(max);
+    }
 
-	public boolean failure(String tubeName, String jobId) {
-		return getTube(tubeName).failure(jobId);
-	}
+    public boolean kick(String tubeName, String jobId, long dtr) {
+        return loadTube(tubeName).kick(jobId, dtr);
+    }
 
-	public void start() {
-		executor.scheduleAtFixedRate(new Runnable() {
+    /**
+     * move the job of tube to delay queue from reserved.
+     * 
+     * @param tubeName
+     * @param jobId
+     * @param dtr
+     * @return
+     */
+    public boolean release(String tubeName, String jobId, long dtr) {
+        return loadTube(tubeName).release(jobId, dtr);
+    }
 
-			@Override
-			public void run() {
-				try {
-					dispatch();
-				} catch (Exception e) {
-					LOG.warn("dispatch error: " + e.getMessage());
-				}
-			}
-		}, 1, 2, TimeUnit.SECONDS);
+    public boolean failure(String tubeName, String jobId) {
+        return loadTube(tubeName).failure(jobId);
+    }
 
-		LOG.info("Scheduler is started");
-	}
+    public Broker start() {
+        executor.scheduleAtFixedRate(new Runnable() {
 
-	public void stop() {
-		executor.shutdown();
-		try {
-			executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.HOURS);
-		} catch (InterruptedException e) {
-		}
-		LOG.info("Scheduler is shutdown");
-	}
+            @Override
+            public void run() {
+                try {
+                    dispatch();
+                } catch (Exception e) {
+                    LOG.warn("dispatch error: " + e.getMessage());
+                }
+            }
+        }, 1, 2, TimeUnit.SECONDS);
 
-	protected void dispatch() {
-		Set<String> tubeSet = tubeSet();
-		for (String tubeName : tubeSet) {
-			if (!taskMap.containsKey(tubeName)) {
-				Runnable task = new ScheduledTask(getTube(tubeName), jedisPool);
-				executor.scheduleWithFixedDelay(task, 0, 1, TimeUnit.SECONDS);
-				taskMap.put(tubeName, task);
-			}
-		}
-	}
+        LOG.info("Broker is started");
+        return this;
+    }
 
-	private final class ScheduledTask implements Runnable {
-		private final Tube tube;
-		private final RedisLock lock;
+    public Broker stop() {
+        executor.shutdown();
+        try {
+            executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.HOURS);
+        } catch (InterruptedException e) {
+        }
+        LOG.info("Broker is shutdown");
+        return this;
+    }
 
-		private ScheduledTask(Tube tube, JedisPool jedisPool) {
-			this.tube = tube;
-			this.lock = new RedisLock(jedisPool, "lock:schedule:" + tube.name(), 30);
-		}
+    private void dispatch() {
+        Set<String> tubeSet = tubeSet();
+        for (String tubeName : tubeSet) {
+            if (!taskMap.containsKey(tubeName)) {
+                Runnable task = new ScheduledTask(createTube(tubeName), jedisPool);
+                executor.scheduleWithFixedDelay(task, 0, 1, TimeUnit.SECONDS);
+                taskMap.put(tubeName, task);
+            }
+        }
+    }
 
-		@Override
-		public void run() {
-			if (lock.acquire()) {
-				try {
-					tube.schedule();
-				} finally {
-					lock.release();
-				}
-			}
-		}
-	}
+    private final class ScheduledTask implements Runnable {
+        private final Tube tube;
+        private final RedisLock lock;
+
+        private ScheduledTask(Tube tube, JedisPool jedisPool) {
+            this.tube = tube;
+            this.lock = new RedisLock(jedisPool, "lock:schedule:" + tube.name(), 30);
+        }
+
+        @Override
+        public void run() {
+            if (lock.acquire()) {
+                try {
+                    tube.schedule();
+                } finally {
+                    lock.release();
+                }
+            }
+        }
+    }
 
 }
