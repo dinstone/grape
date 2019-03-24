@@ -31,50 +31,52 @@ import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.StaticHandler;
 
 public class WebHttpVerticle extends AbstractVerticle {
 
-    private static final Logger LOG = LoggerFactory.getLogger(WebHttpVerticle.class);
+	private static final Logger LOG = LoggerFactory.getLogger(WebHttpVerticle.class);
 
-    private ApplicationContext context;
+	private ApplicationContext context;
 
-    private JsonObject config;
+	private JsonObject config;
 
-    public WebHttpVerticle(ApplicationContext context) {
-        this.context = context;
-    }
+	public WebHttpVerticle(ApplicationContext context) {
+		this.context = context;
+	}
 
-    @Override
-    public void init(Vertx vertx, Context context) {
-        super.init(vertx, context);
-        this.config = config();
-    }
+	@Override
+	public void init(Vertx vertx, Context context) {
+		super.init(vertx, context);
+		this.config = config();
+	}
 
-    @Override
-    public void start(Future<Void> startFuture) {
-        Router mainRouter = Router.router(vertx);
-        mainRouter.route().failureHandler(rc -> {
-            LOG.error("handler logic occur error", rc.failure());
-            rc.response().end();
-        });
+	@Override
+	public void start(Future<Void> startFuture) {
+		Router mainRouter = Router.router(vertx);
+		mainRouter.route().failureHandler(rc -> {
+			LOG.error("handler logic occur error", rc.failure());
+			rc.response().end();
+		});
 
-        mainRouter.route().handler(new AccessLogHandler());
-        mainRouter.route().handler(BodyHandler.create());
+		mainRouter.route().handler(new AccessLogHandler());
+		mainRouter.route().handler(StaticHandler.create());
+		mainRouter.route().handler(BodyHandler.create());
 
-        RouterBuilder routerBuilder = RouterBuilder.create(vertx);
-        routerBuilder.handler(new TubeAdminHandler(context));
-        mainRouter.mountSubRouter("/admin", routerBuilder.build());
+		RouterBuilder routerBuilder = RouterBuilder.create(vertx);
+		routerBuilder.handler(new TubeAdminHandler(context));
+		mainRouter.mountSubRouter("/admin", routerBuilder.build());
 
-        int serverPort = config.getJsonObject("web", new JsonObject()).getInteger("http.port", 9595);
-        HttpServerOptions serverOptions = new HttpServerOptions().setIdleTimeout(180);
-        vertx.createHttpServer(serverOptions).requestHandler(mainRouter::accept).listen(serverPort, ar -> {
-            if (ar.succeeded()) {
-                LOG.info("start web http success, web.http.port={}", serverPort);
-                startFuture.complete();
-            } else {
-                LOG.error("start web http failed, web.http.port={}", serverPort);
-                startFuture.fail(ar.cause());
-            }
-        });
-    }
+		int serverPort = config.getJsonObject("web", new JsonObject()).getInteger("http.port", 9595);
+		HttpServerOptions serverOptions = new HttpServerOptions().setIdleTimeout(180);
+		vertx.createHttpServer(serverOptions).requestHandler(mainRouter::accept).listen(serverPort, ar -> {
+			if (ar.succeeded()) {
+				LOG.info("start web http success, web.http.port={}", serverPort);
+				startFuture.complete();
+			} else {
+				LOG.error("start web http failed, web.http.port={}", serverPort);
+				startFuture.fail(ar.cause());
+			}
+		});
+	}
 }
