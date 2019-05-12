@@ -60,12 +60,12 @@ public class WebHttpVerticle extends AbstractVerticle {
 		});
 
 		mainRouter.route().handler(new AccessLogHandler());
-		mainRouter.route().handler(StaticHandler.create());
+		mainRouter.route("/admin/*").handler(StaticHandler.create().setCachingEnabled(false));
 		mainRouter.route().handler(BodyHandler.create());
 
 		RouterBuilder routerBuilder = RouterBuilder.create(vertx);
 		routerBuilder.handler(new TubeAdminHandler(context));
-		mainRouter.mountSubRouter("/admin", routerBuilder.build());
+		mainRouter.mountSubRouter("/api", routerBuilder.build());
 
 		int serverPort = config.getJsonObject("web", new JsonObject()).getInteger("http.port", 9595);
 		HttpServerOptions serverOptions = new HttpServerOptions().setIdleTimeout(180);

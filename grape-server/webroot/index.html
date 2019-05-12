@@ -1,1 +1,98 @@
-Grape Admin UI
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>Grape Admin</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="shortcut icon" href="img/favicon.ico">
+<link id="bs-css" href="css/bootstrap-cerulean.min.css" rel="stylesheet">
+<link href="css/charisma-app.css" rel="stylesheet">
+<script src="bcs/jquery/jquery.min.js"></script>
+<script src="bcs/bootstrap/dist/js/bootstrap.min.js"></script>
+<script src="js/jquery.cookie.js"></script>
+<script src="js/jquery.history.js"></script>
+<script src="js/autosize.min.js"></script>
+<script src="js/charisma.js"></script>
+</head>
+<body>
+	<div class="navbar navbar-default" role="navigation">
+		<div class="navbar-inner">
+			<button type="button" class="navbar-toggle pull-left animated flip">
+				<span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span>
+			</button>
+			<a class="navbar-brand" href="index.jsp"><img alt="Charisma Logo" src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
+			<!-- theme selector starts -->
+			<div class="btn-group pull-right theme-container animated tada">
+				<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+					<i class="glyphicon glyphicon-tint"></i><span class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span class="caret"></span>
+				</button>
+				<ul class="dropdown-menu" id="themes">
+					<li><a data-value="cerulean" href="#"><i class="whitespace"></i> Cerulean</a></li>
+					<li><a data-value="classic" href="#"><i class="whitespace"></i> Classic</a></li>
+					<li><a data-value="simplex" href="#"><i class="whitespace"></i> Simplex</a></li>
+					<li><a data-value="slate" href="#"><i class="whitespace"></i> Slate</a></li>
+				</ul>
+			</div>
+			<!-- theme selector ends -->
+			<ul class="collapse navbar-collapse nav navbar-nav top-menu">
+				<li>
+					<form class="navbar-search pull-left" action="view/article/query">
+						<input placeholder="Search" class="search-query form-control col-md-12" name="word" type="text">
+					</form>
+				</li>
+			</ul>
+		</div>
+	</div>
+	<div class="ch-container">
+		<div class="row">
+			<div id="menu" class="col-sm-2 col-lg-2">
+				<div class="sidebar-nav">
+					<div class="nav-canvas">
+						<div class="nav-sm nav nav-stacked"></div>
+						<ul class="nav nav-pills nav-stacked main-menu">
+							<li><a class="ajax-link" href="${contextPath}/view/article/category/${category.id}-1"><i class="glyphicon glyphicon-align-justify"></i><span> Tube-1</span></a></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			<div id="content" class="col-lg-10 col-sm-10">
+				<div class="row">
+					<div class="box col-md-12">
+						<div class="box-inner">
+							<div class="box-header well">
+								<h2>
+									<i class="glyphicon glyphicon-th"></i> Tubes
+								</h2>
+								<div class="box-icon">
+									<a href="#" class="btn btn-minimize btn-round btn-default"><i class="glyphicon glyphicon-chevron-up"></i></a>
+								</div>
+							</div>
+							<div class="box-content">
+								<div class="box-content">
+									<ul class="dashboard-list" id="tube-list">
+										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Usman </a><br><strong>Since:</strong> 17/05/2014<br> </li>
+										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Sheikh Heera </a><br> <strong>Since:</strong> 17/05/2014<br> <strong>Status:</strong> <span class="label-warning label label-default">Pending</span></li>
+										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Abdullah </a><br> <strong>Since:</strong> 25/05/2014<br> <strong>Status:</strong> <span class="label-default label label-danger">Banned</span></li>
+										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Sana Amrin</a><br> <strong>Since:</strong> 17/05/2014<br> <strong>Status:</strong> <span class="label label-info">Updates</span></li>
+									</ul>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- content ends -->
+			<!--/#content.col-md-0-->
+		</div>
+		<!--/fluid-row-->
+		<hr>
+		<footer class="row">
+		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019 Grape Admin</p>
+		<p class="col-md-3 col-sm-3 col-xs-12 powered-by">
+			Powered by: <a href="http://usman.it/free-responsive-admin-template">Charisma</a>
+		</p>
+		</footer>
+	</div>
+	<!--/.fluid-container-->
+</body>
+</html>

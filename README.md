@@ -18,15 +18,15 @@ maven install
 ```
 ### step 3: deployment package
 ```
-unzip grape-server-1.0.0.zip
+unzip grape-server-1.1.0.zip
 ```
 ### step 4: start grape by script
 ```
-cd grape-server-1.0.0/bin
+cd grape-server-1.1.0/bin
 ./start.sh
 ```
 ### step 5: stop grape by script
 ```
-cd grape-server-1.0.0/bin
+cd grape-server-1.1.0/bin
 ./stop.sh
 ```
