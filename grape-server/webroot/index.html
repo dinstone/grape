@@ -13,6 +13,38 @@
 <script src="js/jquery.history.js"></script>
 <script src="js/autosize.min.js"></script>
 <script src="js/charisma.js"></script>
+<script src="js/highcharts.js"></script>
+<script type="text/javascript">
+	$(document).ready(function() {
+		var options = {
+			chart : {
+				type : 'bar' //指定图表的类型，默认是折线图（line）
+			},
+			title : {
+				text : '我的第一个图表' // 标题
+			},
+			xAxis : {
+				categories : [ '苹果', '香蕉', '橙子' ]
+			// x 轴分类
+			},
+			yAxis : {
+				title : {
+					text : '吃水果个数' // y 轴标题
+				}
+			},
+			series : [ { // 数据列
+				name : '小明', // 数据列名
+				data : [ 1, 0, 4 ]
+			// 数据
+			}, {
+				name : '小红',
+				data : [ 5, 7, 3 ]
+			} ]
+		};
+
+		var chart = Highcharts.chart('container', options);
+	});
+</script>
 </head>
 <body>
 	<div class="navbar navbar-default" role="navigation">
@@ -70,12 +102,13 @@
 							<div class="box-content">
 								<div class="box-content">
 									<ul class="dashboard-list" id="tube-list">
-										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Usman </a><br><strong>Since:</strong> 17/05/2014<br> </li>
+										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Usman </a><br> <strong>Since:</strong> 17/05/2014<br></li>
 										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Sheikh Heera </a><br> <strong>Since:</strong> 17/05/2014<br> <strong>Status:</strong> <span class="label-warning label label-default">Pending</span></li>
 										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Abdullah </a><br> <strong>Since:</strong> 25/05/2014<br> <strong>Status:</strong> <span class="label-default label label-danger">Banned</span></li>
 										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Sana Amrin</a><br> <strong>Since:</strong> 17/05/2014<br> <strong>Status:</strong> <span class="label label-info">Updates</span></li>
 									</ul>
 								</div>
+								<div id="container" style="width: 600px; height: 400px;"></div>
 							</div>
 						</div>
 					</div>
