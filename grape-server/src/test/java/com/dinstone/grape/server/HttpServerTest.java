@@ -42,7 +42,7 @@ public class HttpServerTest {
                     f.complete();
 
                     try {
-                        Thread.sleep(3000);
+                        Thread.sleep(13000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
