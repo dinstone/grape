@@ -14,6 +14,7 @@ import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.TimeoutHandler;
 
 public class HttpServerTest {
 
@@ -27,10 +28,19 @@ public class HttpServerTest {
 
         Router mainRouter = Router.router(vertx);
         mainRouter.route().failureHandler(rc -> {
-            LOG.error("handler logic occur error", rc.failure());
-            rc.response().end();
+            LOG.error("failure handle for {}, {}:{}", rc.request().path(), rc.statusCode(), rc.failure());
+            if (rc.failure() != null) {
+                if (rc.statusCode() == 200) {
+                    rc.response().setStatusCode(500).end(rc.failure().getMessage());
+                } else {
+                    rc.response().end(rc.failure().getMessage());
+                }
+            } else {
+                rc.response().setStatusCode(rc.statusCode()).end();
+            }
         });
         mainRouter.route().handler(new AccessLogHandler());
+//        mainRouter.route().handler(TimeoutHandler.create());
         mainRouter.route().handler(new Handler<RoutingContext>() {
 
             @Override
@@ -47,9 +57,11 @@ public class HttpServerTest {
                         e.printStackTrace();
                     }
                     LOG.info("release = " + request.path());
-                }, false, rh -> {
-                    request.response().end("OK");
-                    LOG.info("response = " + request.path());
+                }, false, ar -> {
+                    if (!request.response().ended()) {
+                        request.response().end("OK");
+                    }
+                    LOG.info("response = {}, {}", request.path(), rc.statusCode());
                 });
             }
         });
@@ -59,12 +71,12 @@ public class HttpServerTest {
         server.connectionHandler(new Handler<HttpConnection>() {
             @Override
             public void handle(HttpConnection hc) {
-                LOG.info("Connection {} opened ", hc.remoteAddress());
+                LOG.info("connection {} opened ", hc.remoteAddress());
                 hc.exceptionHandler(new Handler<Throwable>() {
 
                     @Override
                     public void handle(Throwable error) {
-                        LOG.warn("Connection {} errord : {}", hc.remoteAddress(),
+                        LOG.warn("connection {} throws : {}", hc.remoteAddress(),
                                 error != null ? error.getMessage() : "");
                     }
                 });
@@ -72,7 +84,7 @@ public class HttpServerTest {
 
                     @Override
                     public void handle(Void event) {
-                        LOG.info("Connection {} closed", hc.remoteAddress());
+                        LOG.info("connection {} closed", hc.remoteAddress());
                     }
                 });
 
