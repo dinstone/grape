@@ -9,7 +9,7 @@
 	<properties>
 		<slf4j.version>1.7.13</slf4j.version>
 		<log4j.version>2.5</log4j.version>
-		<vertx.version>3.6.3</vertx.version>
+		<vertx.version>3.4.1</vertx.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -26,12 +26,12 @@
 		<dependency>
 			<groupId>io.vertx</groupId>
 			<artifactId>vertx-core</artifactId>
-			<version>3.4.1</version>
+			<version>${vertx.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.vertx</groupId>
 			<artifactId>vertx-web</artifactId>
-			<version>3.4.1</version>
+			<version>${vertx.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.dinstone.vertx</groupId>

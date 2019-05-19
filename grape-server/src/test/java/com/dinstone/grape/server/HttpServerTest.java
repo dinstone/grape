@@ -5,9 +5,12 @@ import org.slf4j.LoggerFactory;
 
 import com.dinstone.grape.server.handler.AccessLogHandler;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import io.vertx.core.WorkerExecutor;
 import io.vertx.core.http.HttpConnection;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
@@ -29,9 +32,12 @@ public class HttpServerTest {
 			createHttpServerVerticles(vertx);
 		}
 
+		System.in.read();
 	}
 
 	private static void createHttpServerVerticles(Vertx vertx) {
+		WorkerExecutor workx = vertx.createSharedWorkerExecutor("bwp", 80);
+
 		Router mainRouter = Router.router(vertx);
 		mainRouter.route().failureHandler(rc -> {
 			LOG.error("failure handle for {}, {}:{}", rc.request().path(), rc.statusCode(), rc.failure());
@@ -53,7 +59,8 @@ public class HttpServerTest {
 			public void handle(RoutingContext rc) {
 				HttpServerRequest request = rc.request();
 				LOG.info("request = {}, {}", request.path(), request.remoteAddress());
-				vertx.executeBlocking(f -> {
+
+				Handler<Future<Object>> blockingHandler = f -> {
 					LOG.info("handle = {}, {}", request.path(), request.remoteAddress());
 					f.complete();
 
@@ -63,12 +70,25 @@ public class HttpServerTest {
 						e.printStackTrace();
 					}
 					LOG.info("release = {}, {}", request.path(), request.remoteAddress());
-				}, false, ar -> {
+				};
+
+				Handler<AsyncResult<Object>> resultHandler = ar -> {
 					if (!request.response().ended()) {
 						request.response().end("OK");
 					}
 					LOG.info("response = {}, {}", request.path(), request.remoteAddress());
-				});
+				};
+
+				if (request.path().contains("wbp")) {
+					workx.executeBlocking(blockingHandler, false, resultHandler);
+				} else if (request.path().contains("cbp")) {
+					vertx.executeBlocking(blockingHandler, false, resultHandler);
+				} else {
+					if (!request.response().ended()) {
+						request.response().end("OK");
+					}
+					LOG.info("response = {}, {}", request.path(), request.remoteAddress());
+				}
 			}
 		});
 
