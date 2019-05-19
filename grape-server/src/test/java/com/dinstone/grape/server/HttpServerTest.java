@@ -14,87 +14,91 @@ import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.TimeoutHandler;
 
 public class HttpServerTest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(HttpServerTest.class);
+	private static final Logger LOG = LoggerFactory.getLogger(HttpServerTest.class);
 
-    public static void main(String[] args) throws Exception {
-        System.setProperty("vertx.disableH2c", "true");
+	public static void main(String[] args) throws Exception {
+		System.setProperty("vertx.disableH2c", "true");
 
-        VertxOptions vertxOptions = new VertxOptions().setWorkerPoolSize(2).setEventLoopPoolSize(3);
-        Vertx vertx = VertxHelper.createVertx(vertxOptions);
+		VertxOptions vertxOptions = new VertxOptions().setWorkerPoolSize(80).setEventLoopPoolSize(8);
+		Vertx vertx = VertxHelper.createVertx(vertxOptions);
 
-        Router mainRouter = Router.router(vertx);
-        mainRouter.route().failureHandler(rc -> {
-            LOG.error("failure handle for {}, {}:{}", rc.request().path(), rc.statusCode(), rc.failure());
-            if (rc.failure() != null) {
-                if (rc.statusCode() == 200) {
-                    rc.response().setStatusCode(500).end(rc.failure().getMessage());
-                } else {
-                    rc.response().end(rc.failure().getMessage());
-                }
-            } else {
-                rc.response().setStatusCode(rc.statusCode()).end();
-            }
-        });
-        mainRouter.route().handler(new AccessLogHandler());
-//        mainRouter.route().handler(TimeoutHandler.create());
-        mainRouter.route().handler(new Handler<RoutingContext>() {
+		for (int i = 0; i < 2; i++) {
+			createHttpServerVerticles(vertx);
+		}
 
-            @Override
-            public void handle(RoutingContext rc) {
-                HttpServerRequest request = rc.request();
-                LOG.info("request = " + request.path());
-                vertx.executeBlocking(f -> {
-                    LOG.info("handle = " + request.path());
-                    f.complete();
+	}
 
-                    try {
-                        Thread.sleep(13000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    LOG.info("release = " + request.path());
-                }, false, ar -> {
-                    if (!request.response().ended()) {
-                        request.response().end("OK");
-                    }
-                    LOG.info("response = {}, {}", request.path(), rc.statusCode());
-                });
-            }
-        });
+	private static void createHttpServerVerticles(Vertx vertx) {
+		Router mainRouter = Router.router(vertx);
+		mainRouter.route().failureHandler(rc -> {
+			LOG.error("failure handle for {}, {}:{}", rc.request().path(), rc.statusCode(), rc.failure());
+			if (rc.failure() != null) {
+				if (rc.statusCode() == 200) {
+					rc.response().setStatusCode(500).end(rc.failure().getMessage());
+				} else {
+					rc.response().end(rc.failure().getMessage());
+				}
+			} else {
+				rc.response().setStatusCode(rc.statusCode()).end();
+			}
+		});
+		mainRouter.route().handler(new AccessLogHandler());
+		// mainRouter.route().handler(TimeoutHandler.create());
+		mainRouter.route().handler(new Handler<RoutingContext>() {
 
-        HttpServerOptions serverOptions = new HttpServerOptions().setIdleTimeout(30).setAcceptBacklog(5);
-        HttpServer server = vertx.createHttpServer(serverOptions);
-        server.connectionHandler(new Handler<HttpConnection>() {
-            @Override
-            public void handle(HttpConnection hc) {
-                LOG.info("connection {} opened ", hc.remoteAddress());
-                hc.exceptionHandler(new Handler<Throwable>() {
+			@Override
+			public void handle(RoutingContext rc) {
+				HttpServerRequest request = rc.request();
+				LOG.info("request = {}, {}", request.path(), request.remoteAddress());
+				vertx.executeBlocking(f -> {
+					LOG.info("handle = {}, {}", request.path(), request.remoteAddress());
+					f.complete();
 
-                    @Override
-                    public void handle(Throwable error) {
-                        LOG.warn("connection {} throws : {}", hc.remoteAddress(),
-                                error != null ? error.getMessage() : "");
-                    }
-                });
-                hc.closeHandler(new Handler<Void>() {
+					try {
+						Thread.sleep(1500);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					LOG.info("release = {}, {}", request.path(), request.remoteAddress());
+				}, false, ar -> {
+					if (!request.response().ended()) {
+						request.response().end("OK");
+					}
+					LOG.info("response = {}, {}", request.path(), request.remoteAddress());
+				});
+			}
+		});
 
-                    @Override
-                    public void handle(Void event) {
-                        LOG.info("connection {} closed", hc.remoteAddress());
-                    }
-                });
+		HttpServerOptions serverOptions = new HttpServerOptions().setIdleTimeout(30).setAcceptBacklog(1024);
+		HttpServer server = vertx.createHttpServer(serverOptions);
+		server.connectionHandler(new Handler<HttpConnection>() {
+			@Override
+			public void handle(HttpConnection hc) {
+				LOG.info("connection {} opened ", hc.remoteAddress());
+				hc.exceptionHandler(new Handler<Throwable>() {
 
-            }
-        });
+					@Override
+					public void handle(Throwable error) {
+						LOG.warn("connection {} throws : {}", hc.remoteAddress(),
+								error != null ? error.getMessage() : "");
+					}
+				});
+				hc.closeHandler(new Handler<Void>() {
 
-        server.requestHandler(mainRouter::accept).listen(8081);
+					@Override
+					public void handle(Void event) {
+						LOG.info("connection {} closed", hc.remoteAddress());
+					}
+				});
 
-        LOG.info("connect to http://localhost:8081");
+			}
+		});
 
-    }
+		server.requestHandler(mainRouter::accept).listen(8081);
+		LOG.info("connect to http://localhost:8081");
+	}
 
 }

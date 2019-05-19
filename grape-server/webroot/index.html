@@ -15,34 +15,90 @@
 <script src="js/charisma.js"></script>
 <script src="js/highcharts.js"></script>
 <script type="text/javascript">
-	$(document).ready(function() {
+	function createChart(tubename) {
 		var options = {
-			chart : {
-				type : 'bar' //指定图表的类型，默认是折线图（line）
-			},
 			title : {
-				text : '我的第一个图表' // 标题
-			},
-			xAxis : {
-				categories : [ '苹果', '香蕉', '橙子' ]
-			// x 轴分类
+				text : 'Tube:' + tubename
 			},
 			yAxis : {
 				title : {
-					text : '吃水果个数' // y 轴标题
+					text : 'Count Value'
 				}
 			},
-			series : [ { // 数据列
-				name : '小明', // 数据列名
-				data : [ 1, 0, 4 ]
-			// 数据
-			}, {
-				name : '小红',
-				data : [ 5, 7, 3 ]
-			} ]
+			legend : {
+				layout : 'vertical',
+				align : 'right',
+				verticalAlign : 'middle'
+			},
+			plotOptions : {
+				series : {
+					label : {
+						connectorAllowed : false
+					},
+					pointStart : 2010
+				}
+			},
+			series : [
+					{
+						name : 'series1',
+						data : [ 43934, 52503, 57177, 69658, 97031, 119931,
+								137133, 154175 ]
+					},
+					{
+						name : 'series2',
+						data : [ 24916, 24064, 29742, 29851, 32490, 30282,
+								38121, 40434 ]
+					},
+					{
+						name : 'series3',
+						data : [ 11744, 17722, 16005, 19771, 20185, 24377,
+								32147, 39387 ]
+					},
+					{
+						name : 'series4',
+						data : [ null, null, 7988, 12169, 15112, 22452, 34400,
+								34227 ]
+					},
+					{
+						name : 'series5',
+						data : [ 12908, 5948, 8105, 11248, 8989, 11816, 18274,
+								18111 ]
+					} ],
+			responsive : {
+				rules : [ {
+					condition : {
+						maxWidth : 500
+					},
+					chartOptions : {
+						legend : {
+							layout : 'horizontal',
+							align : 'center',
+							verticalAlign : 'bottom'
+						}
+					}
+				} ]
+			}
 		};
+		$("#tubelist")
+				.append(
+						'<div id="'+tubename+'" style="width: 600px; height: 400px;"></div>');
+		return Highcharts.chart(tubename, options);
+	}
 
-		var chart = Highcharts.chart('container', options);
+	$(document).ready(function() {
+		var chartMap = {};
+		$.getJSON("/api/tube/set", function(data, status) {
+			if (data && data.code) {
+				if (data.result) {
+					$.each(data.result, function(i, tn) {
+						chartMap[tn] = createChart("tube-" + i);
+					});
+				}
+			}
+		});
+		/* for (var i = 0; i < 5; i++) {
+			createChart("tube-" + i);
+		} */
 	});
 </script>
 </head>
@@ -99,16 +155,8 @@
 									<a href="#" class="btn btn-minimize btn-round btn-default"><i class="glyphicon glyphicon-chevron-up"></i></a>
 								</div>
 							</div>
-							<div class="box-content">
-								<div class="box-content">
-									<ul class="dashboard-list" id="tube-list">
-										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Usman </a><br> <strong>Since:</strong> 17/05/2014<br></li>
-										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Sheikh Heera </a><br> <strong>Since:</strong> 17/05/2014<br> <strong>Status:</strong> <span class="label-warning label label-default">Pending</span></li>
-										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Abdullah </a><br> <strong>Since:</strong> 25/05/2014<br> <strong>Status:</strong> <span class="label-default label label-danger">Banned</span></li>
-										<li><img class="dashboard-avatar" alt="tube" src="img/star-on.png"><strong>Name:</strong> <a href="#">Sana Amrin</a><br> <strong>Since:</strong> 17/05/2014<br> <strong>Status:</strong> <span class="label label-info">Updates</span></li>
-									</ul>
-								</div>
-								<div id="container" style="width: 600px; height: 400px;"></div>
+							<div class="box-content" id="tubelist">
+								<!-- <div id="container" style="width: 600px; height: 400px;"></div> -->
 							</div>
 						</div>
 					</div>
