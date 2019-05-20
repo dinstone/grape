@@ -28,7 +28,7 @@ public class HttpServerTest {
         VertxOptions vertxOptions = new VertxOptions().setWorkerPoolSize(80).setEventLoopPoolSize(8);
         Vertx vertx = VertxHelper.createVertx(vertxOptions);
 
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 4; i++) {
             createHttpServerVerticles(vertx);
         }
 
@@ -65,7 +65,7 @@ public class HttpServerTest {
                     f.complete();
 
                     try {
-                        Thread.sleep(1500);
+                        Thread.sleep(1800);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -117,7 +117,7 @@ public class HttpServerTest {
             }
         });
 
-        server.requestHandler(mainRouter::accept).listen(8081);
+        server.requestHandler(mainRouter).listen(8081);
         LOG.info("connect to http://localhost:8081");
     }
 
