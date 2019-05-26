@@ -25,7 +25,7 @@ public class HttpServerTest {
     public static void main(String[] args) throws Exception {
         System.setProperty("vertx.disableH2c", "true");
 
-        VertxOptions vertxOptions = new VertxOptions().setWorkerPoolSize(80).setEventLoopPoolSize(8);
+        VertxOptions vertxOptions = new VertxOptions().setWorkerPoolSize(40).setEventLoopPoolSize(4);
         Vertx vertx = VertxHelper.createVertx(vertxOptions);
 
         for (int i = 0; i < 4; i++) {
@@ -36,7 +36,7 @@ public class HttpServerTest {
     }
 
     private static void createHttpServerVerticles(Vertx vertx) {
-        WorkerExecutor workx = vertx.createSharedWorkerExecutor("wbp", 80);
+        WorkerExecutor workx = vertx.createSharedWorkerExecutor("wbp", 40);
 
         Router mainRouter = Router.router(vertx);
         mainRouter.route().failureHandler(rc -> {
@@ -65,7 +65,7 @@ public class HttpServerTest {
                     f.complete();
 
                     try {
-                        Thread.sleep(1800);
+                        Thread.sleep(1600);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
