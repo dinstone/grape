@@ -20,8 +20,8 @@ import org.slf4j.LoggerFactory;
 
 import com.dinstone.grape.server.ApplicationContext;
 import com.dinstone.grape.server.handler.AccessLogHandler;
-import com.dinstone.grape.server.handler.DelayJobHandler;
-import com.dinstone.grape.server.handler.TubeAdminHandler;
+import com.dinstone.grape.server.handler.JobApiHandler;
+import com.dinstone.grape.server.handler.TubeApiHandler;
 import com.dinstone.vertx.web.RouterBuilder;
 
 import io.vertx.core.AbstractVerticle;
@@ -33,7 +33,6 @@ import io.vertx.core.http.HttpConnection;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
-import io.vertx.ext.web.handler.BodyHandler;
 
 public class WebRestVerticle extends AbstractVerticle {
 
@@ -70,11 +69,10 @@ public class WebRestVerticle extends AbstractVerticle {
         });
 
         mainRouter.route().handler(new AccessLogHandler());
-        mainRouter.route().handler(BodyHandler.create());
 
         RouterBuilder routerBuilder = RouterBuilder.create(vertx);
-        routerBuilder.handler(new DelayJobHandler(context));
-        routerBuilder.handler(new TubeAdminHandler(context));
+        routerBuilder.handler(new JobApiHandler(context));
+        routerBuilder.handler(new TubeApiHandler(context));
         mainRouter.mountSubRouter("/api", routerBuilder.build());
 
         int serverPort = config.getJsonObject("web", new JsonObject()).getInteger("rest.port", 9521);
@@ -99,7 +97,7 @@ public class WebRestVerticle extends AbstractVerticle {
                     }
                 });
             }
-        }).requestHandler(mainRouter::accept).listen(serverPort, ar -> {
+        }).requestHandler(mainRouter).listen(serverPort, ar -> {
             if (ar.succeeded()) {
                 LOG.info("start web http success, web.rest.port={}", serverPort);
                 startFuture.complete();

@@ -16,22 +16,23 @@
 package com.dinstone.grape.server.handler;
 
 import com.dinstone.grape.server.ApplicationContext;
+import com.dinstone.vertx.web.annotation.Context;
 import com.dinstone.vertx.web.annotation.Get;
-import com.dinstone.vertx.web.annotation.Path;
 import com.dinstone.vertx.web.annotation.Produces;
+import com.dinstone.vertx.web.annotation.WebHandler;
 
 import io.vertx.ext.web.RoutingContext;
 
-@Path("/tube")
+@WebHandler("/tube")
 @Produces({ "application/json" })
-public class TubeAdminHandler extends RestApiHandler {
+public class TubeApiHandler extends RestApiHandler {
 
-    public TubeAdminHandler(ApplicationContext context) {
+    public TubeApiHandler(@Context ApplicationContext context) {
         super(context);
     }
 
     @Get("/set")
-    public void set(RoutingContext ctx) {
+    public void set(@Context RoutingContext ctx) {
         ctx.vertx().executeBlocking(future -> {
             try {
                 future.complete(broker.tubeSet());
@@ -48,7 +49,7 @@ public class TubeAdminHandler extends RestApiHandler {
     }
 
     @Get("/stats")
-    public void stats(RoutingContext ctx) {
+    public void stats(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");

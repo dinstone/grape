@@ -75,8 +75,10 @@ public class ApplicationActivator {
     }
 
     private VertxOptions loadVertxOptions(JsonObject config) {
+        VertxOptions vertxOptions = new VertxOptions();
+        vertxOptions.getEventBusOptions().setClustered(false);
+
         JsonObject vertxConfig = config.getJsonObject("vertx", new JsonObject());
-        VertxOptions vertxOptions = new VertxOptions().setClustered(false);
         int blockedThreadCheckInterval = vertxConfig.getInteger("blockedThreadCheckInterval", 1000);
         if (blockedThreadCheckInterval > 0) {
             vertxOptions.setBlockedThreadCheckInterval(blockedThreadCheckInterval);

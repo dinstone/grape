@@ -89,7 +89,7 @@ public class Broker {
         throw new RuntimeException("unkown tube '" + tubeName + "'");
     }
 
-    private Tube createTube(String tubeName) {
+    public Tube createTube(String tubeName) {
         Tube tube = tubeMap.get(tubeName);
         if (tube == null) {
             addTube(tubeName);

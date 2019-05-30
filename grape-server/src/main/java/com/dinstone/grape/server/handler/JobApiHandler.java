@@ -19,25 +19,26 @@ import java.util.List;
 
 import com.dinstone.grape.core.Job;
 import com.dinstone.grape.server.ApplicationContext;
+import com.dinstone.vertx.web.annotation.Context;
 import com.dinstone.vertx.web.annotation.Delete;
 import com.dinstone.vertx.web.annotation.Get;
-import com.dinstone.vertx.web.annotation.Path;
 import com.dinstone.vertx.web.annotation.Post;
 import com.dinstone.vertx.web.annotation.Produces;
 import com.dinstone.vertx.web.annotation.Put;
+import com.dinstone.vertx.web.annotation.WebHandler;
 
 import io.vertx.ext.web.RoutingContext;
 
-@Path("/job")
+@WebHandler("/job")
 @Produces({ "application/json" })
-public class DelayJobHandler extends RestApiHandler {
+public class JobApiHandler extends RestApiHandler {
 
-    public DelayJobHandler(ApplicationContext context) {
+    public JobApiHandler(ApplicationContext context) {
         super(context);
     }
 
     @Post("/produce")
-    public void produce(RoutingContext ctx) {
+    public void produce(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");
@@ -90,7 +91,7 @@ public class DelayJobHandler extends RestApiHandler {
     }
 
     @Delete("/delete")
-    public void delete(RoutingContext ctx) {
+    public void delete(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");
@@ -119,7 +120,7 @@ public class DelayJobHandler extends RestApiHandler {
     }
 
     @Get("/consume")
-    public void consume(RoutingContext ctx) {
+    public void consume(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");
@@ -154,7 +155,7 @@ public class DelayJobHandler extends RestApiHandler {
     }
 
     @Delete("/finish")
-    public void finish(RoutingContext ctx) {
+    public void finish(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");
@@ -183,7 +184,7 @@ public class DelayJobHandler extends RestApiHandler {
     }
 
     @Put("/release")
-    public void release(RoutingContext ctx) {
+    public void release(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");
@@ -224,7 +225,7 @@ public class DelayJobHandler extends RestApiHandler {
     }
 
     @Put("/failure")
-    public void failure(RoutingContext ctx) {
+    public void failure(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");
@@ -253,7 +254,7 @@ public class DelayJobHandler extends RestApiHandler {
     }
 
     @Get("/peek")
-    public void peek(RoutingContext ctx) {
+    public void peek(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");
@@ -288,7 +289,7 @@ public class DelayJobHandler extends RestApiHandler {
     }
 
     @Put("/kick")
-    public void kick(RoutingContext ctx) {
+    public void kick(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");
@@ -329,7 +330,7 @@ public class DelayJobHandler extends RestApiHandler {
     }
 
     @Delete("/discard")
-    public void discard(RoutingContext ctx) {
+    public void discard(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
             failed(ctx, "tube is empty");
@@ -358,7 +359,7 @@ public class DelayJobHandler extends RestApiHandler {
     }
 
     @Get("/tubes")
-    public void tubes(RoutingContext ctx) {
+    public void tubes(@Context RoutingContext ctx) {
         ctx.vertx().executeBlocking(future -> {
             try {
                 future.complete(broker.tubeSet());
