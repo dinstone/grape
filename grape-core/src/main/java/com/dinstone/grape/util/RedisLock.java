@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.dinstone.grape.core;
+package com.dinstone.grape.util;
 
 import java.util.UUID;
 
