@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.dinstone.grape.util.NamedThreadFactory;
 import com.dinstone.grape.util.RedisLock;
 
 import redis.clients.jedis.Jedis;
@@ -35,6 +36,8 @@ import redis.clients.jedis.JedisPool;
 public class Broker {
 
     private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
+
+    private static final String THREAD_PREFIX = "broker-schedule-thread-";
 
     private static final String TUBE_SET = "tube:set";
 
@@ -60,7 +63,7 @@ public class Broker {
         this.jedisPool = jedisPool;
         this.tubeMap = new ConcurrentHashMap<>();
         this.taskMap = new ConcurrentHashMap<>();
-        this.executor = Executors.newScheduledThreadPool(scheduledSize);
+        this.executor = Executors.newScheduledThreadPool(scheduledSize, new NamedThreadFactory(THREAD_PREFIX));
     }
 
     public Set<String> tubeSet() {

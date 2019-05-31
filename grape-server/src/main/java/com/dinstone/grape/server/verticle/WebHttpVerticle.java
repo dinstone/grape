@@ -20,6 +20,8 @@ import org.slf4j.LoggerFactory;
 
 import com.dinstone.grape.server.ApplicationContext;
 import com.dinstone.grape.server.handler.AccessLogHandler;
+import com.dinstone.grape.server.handler.TubeApiHandler;
+import com.dinstone.vertx.web.RouterBuilder;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Context;
@@ -66,7 +68,12 @@ public class WebHttpVerticle extends AbstractVerticle {
             }
         });
         mainRouter.route().handler(new AccessLogHandler());
-        mainRouter.route("/admin/*").handler(StaticHandler.create().setCachingEnabled(false));
+
+        RouterBuilder routerBuilder = RouterBuilder.create(vertx);
+        routerBuilder.handler(new TubeApiHandler(context));
+        mainRouter.mountSubRouter("/api", routerBuilder.build());
+
+        mainRouter.route("/*").handler(StaticHandler.create().setCachingEnabled(false));
 
         int serverPort = config.getJsonObject("web", new JsonObject()).getInteger("http.port", 9595);
         HttpServerOptions serverOptions = new HttpServerOptions().setIdleTimeout(180);
