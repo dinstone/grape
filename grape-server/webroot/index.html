@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-<title>Grape Admin</title>
+<title>Grape Admin Tubes</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="shortcut icon" href="img/favicon.ico">
@@ -15,90 +15,27 @@
 <script src="js/charisma.js"></script>
 <script src="js/highcharts.js"></script>
 <script type="text/javascript">
-	function createChart(tubename) {
-		var options = {
-			title : {
-				text : 'Tube:' + tubename
-			},
-			yAxis : {
-				title : {
-					text : 'Count Value'
-				}
-			},
-			legend : {
-				layout : 'vertical',
-				align : 'right',
-				verticalAlign : 'middle'
-			},
-			plotOptions : {
-				series : {
-					label : {
-						connectorAllowed : false
-					},
-					pointStart : 2010
-				}
-			},
-			series : [
-					{
-						name : 'series1',
-						data : [ 43934, 52503, 57177, 69658, 97031, 119931,
-								137133, 154175 ]
-					},
-					{
-						name : 'series2',
-						data : [ 24916, 24064, 29742, 29851, 32490, 30282,
-								38121, 40434 ]
-					},
-					{
-						name : 'series3',
-						data : [ 11744, 17722, 16005, 19771, 20185, 24377,
-								32147, 39387 ]
-					},
-					{
-						name : 'series4',
-						data : [ null, null, 7988, 12169, 15112, 22452, 34400,
-								34227 ]
-					},
-					{
-						name : 'series5',
-						data : [ 12908, 5948, 8105, 11248, 8989, 11816, 18274,
-								18111 ]
-					} ],
-			responsive : {
-				rules : [ {
-					condition : {
-						maxWidth : 500
-					},
-					chartOptions : {
-						legend : {
-							layout : 'horizontal',
-							align : 'center',
-							verticalAlign : 'bottom'
-						}
-					}
-				} ]
-			}
-		};
-		$("#tubelist")
-				.append(
-						'<div id="'+tubename+'" style="width: 600px; height: 400px;"></div>');
-		return Highcharts.chart(tubename, options);
+	function createRow(stats) {
+		var tsr = '<tr><td><a class="ajax-link" href="chart.html?tube='
+				+ stats.tubeName + '">' + stats.tubeName + '</a></td><td>'
+				+ stats.totalJobSize + '</td><td>' + stats.finishJobSize
+				+ '</td><td>' + stats.delayQueueSize + '</td><td>'
+				+ stats.readyQueueSize + '</td><td>' + stats.retainQueueSize
+				+ '</td><td>' + stats.failedQueueSize + '</td></tr>';
+
+		$("#tubeStatsList").append(tsr);
 	}
 
 	$(document).ready(function() {
-		var chartMap = {};
-		$.getJSON("/api/tube/set", function(data, status) {
-			if (data && data.code) {
+		$.getJSON("/api/tube/stats", function(data, status) {
+			if (data && data.code > 0) {
 				if (data.result) {
-					$.each(data.result, function(i, tn) {
-						chartMap[tn] = createChart("tube-" + i);
+					$.each(data.result, function(i, ts) {
+						createRow(ts);
 					});
 				}
 			}
 		});
-		/* for (var i = 0; i < 5; i++) {
-			createChart("tube-" + i);
-		} */
 	});
 </script>
 </head>
@@ -133,17 +70,7 @@
 	</div>
 	<div class="ch-container">
 		<div class="row">
-			<div id="menu" class="col-sm-2 col-lg-2">
-				<div class="sidebar-nav">
-					<div class="nav-canvas">
-						<div class="nav-sm nav nav-stacked"></div>
-						<ul class="nav nav-pills nav-stacked main-menu">
-							<li><a class="ajax-link" href="${contextPath}/view/article/category/${category.id}-1"><i class="glyphicon glyphicon-align-justify"></i><span> Tube-1</span></a></li>
-						</ul>
-					</div>
-				</div>
-			</div>
-			<div id="content" class="col-lg-10 col-sm-10">
+			<div id="content" class="col-lg-12 col-sm-10">
 				<div class="row">
 					<div class="box col-md-12">
 						<div class="box-inner">
@@ -157,6 +84,22 @@
 							</div>
 							<div class="box-content" id="tubelist">
 								<!-- <div id="container" style="width: 600px; height: 400px;"></div> -->
+								<table class="table table-striped table-bordered bootstrap-datatable datatable responsive dataTable" id="DataTables_Table_0" aria-describedby="DataTables_Table_0_info">
+									<thead>
+										<tr role="row">
+											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Tube Name</th>
+											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Total Job Size</th>
+											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Finish Job Size</th>
+											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Delay Queue Size</th>
+											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Ready Queue Size</th>
+											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Retain Queue Size</th>
+											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Failed Queue Size</th>
+										</tr>
+									</thead>
+									<tbody id="tubeStatsList">
+									</tbody>
+								</table>
+
 							</div>
 						</div>
 					</div>
