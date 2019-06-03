@@ -22,7 +22,7 @@
 				marginRight : 10
 			},
 			title : {
-				text : 'Stats Chart'
+				text : 'Tube Status Chart'
 			},
 			subtitle : {
 				text : 'Tube: ' + titleName
@@ -33,7 +33,7 @@
 			},
 			yAxis : {
 				title : {
-					text : 'Value'
+					text : 'Size'
 				},
 				plotLines : [ {
 					value : 0,
@@ -168,41 +168,22 @@
 	<div class="navbar navbar-default" role="navigation">
 		<div class="navbar-inner">
 			<button type="button" class="navbar-toggle pull-left animated flip">
-				<span class="sr-only">Toggle navigation</span> <span
-					class="icon-bar"></span> <span class="icon-bar"></span> <span
-					class="icon-bar"></span>
+				<span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span>
 			</button>
-			<a class="navbar-brand" href="index.jsp"><img alt="Charisma Logo"
-				src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
+			<a class="navbar-brand" href="/"><img alt="Charisma Logo" src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
 			<!-- theme selector starts -->
 			<div class="btn-group pull-right theme-container animated tada">
-				<button class="btn btn-default dropdown-toggle"
-					data-toggle="dropdown">
-					<i class="glyphicon glyphicon-tint"></i><span
-						class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span
-						class="caret"></span>
+				<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+					<i class="glyphicon glyphicon-tint"></i><span class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span class="caret"></span>
 				</button>
 				<ul class="dropdown-menu" id="themes">
-					<li><a data-value="cerulean" href="#"><i
-							class="whitespace"></i> Cerulean</a></li>
-					<li><a data-value="classic" href="#"><i class="whitespace"></i>
-							Classic</a></li>
-					<li><a data-value="simplex" href="#"><i class="whitespace"></i>
-							Simplex</a></li>
-					<li><a data-value="slate" href="#"><i class="whitespace"></i>
-							Slate</a></li>
+					<li><a data-value="cerulean" href="#"><i class="whitespace"></i> Cerulean</a></li>
+					<li><a data-value="classic" href="#"><i class="whitespace"></i> Classic</a></li>
+					<li><a data-value="simplex" href="#"><i class="whitespace"></i> Simplex</a></li>
+					<li><a data-value="slate" href="#"><i class="whitespace"></i> Slate</a></li>
 				</ul>
 			</div>
 			<!-- theme selector ends -->
-			<ul class="collapse navbar-collapse nav navbar-nav top-menu">
-				<li>
-					<form class="navbar-search pull-left" action="view/article/query">
-						<input placeholder="Search"
-							class="search-query form-control col-md-12" name="word"
-							type="text">
-					</form>
-				</li>
-			</ul>
 		</div>
 	</div>
 	<div class="ch-container">
@@ -216,29 +197,25 @@
 				</div>
 				<div class=" row">
 					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#">
-							<i class="glyphicon glyphicon-user blue"></i>
+						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-user blue"></i>
 							<div>Tube Name</div>
-							<div id="tubeName">sadfasdf</div>
+							<div id="tubeName"></div>
 						</a>
 					</div>
 					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#">
-							<i class="glyphicon glyphicon-envelope green"></i>
+						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-envelope green"></i>
 							<div>Total Size</div>
 							<div id="totalSize">0</div>
 						</a>
 					</div>
 					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#">
-							<i class="glyphicon glyphicon-envelope yellow"></i>
+						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-envelope yellow"></i>
 							<div>Finish Size</div>
 							<div id="finishSize">0</div>
 						</a>
 					</div>
 					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#">
-							<i class="glyphicon glyphicon-envelope red"></i>
+						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-envelope red"></i>
 							<div>Failed Size</div>
 							<div id="failedSize">0</div>
 						</a>
@@ -251,10 +228,6 @@
 								<h2>
 									<i class="glyphicon glyphicon-th"></i> Tube Status Chart
 								</h2>
-								<div class="box-icon">
-									<a href="#" class="btn btn-minimize btn-round btn-default"><i
-										class="glyphicon glyphicon-chevron-up"></i></a>
-								</div>
 							</div>
 							<div class="box-content" id="tubelist">
 								<div id="statsChart" style="width: 100%; height: 400px;"></div>
@@ -269,8 +242,7 @@
 		<!--/fluid-row-->
 		<hr>
 		<footer class="row">
-		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019 Grape
-			Admin</p>
+		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019 Grape Admin</p>
 		<p class="col-md-3 col-sm-3 col-xs-12 powered-by">
 			Powered by: <a href="http://usman.it/free-responsive-admin-template">Charisma</a>
 		</p>
