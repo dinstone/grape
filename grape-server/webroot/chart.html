@@ -14,114 +14,117 @@
 <script src="js/charisma.js"></script>
 <script src="js/highcharts.js"></script>
 <script type="text/javascript">
-	function createChart(tubename, titleName) {
+	function createChart(chartId, titleName) {
 		var options = {
-			title : {
-				text : titleName
+			chart : {
+				type : 'spline',
+				animation : Highcharts.svg, // don't animate in old IE
+				marginRight : 10
 			},
-			tooltip : {
-				shared: true,
-	            crosshairs: true,
-				dateTimeLabelFormats : {
-					second : '%H:%M:%S',
-					minute : '%H:%M',
-					hour : '%H:%M',
-					day : '%Y-%m-%d',
-					week : '%m-%d',
-					month : '%Y-%m',
-					year : '%Y'
-				}
+			title : {
+				text : 'Stats Chart'
+			},
+			subtitle : {
+				text : 'Tube: ' + titleName
 			},
 			xAxis : {
 				type : 'datetime',
-				tickInterval : 7 * 24 * 3600 * 1000,
-				tickWidth : 0,
-				gridLineWidth : 1,
-				labels : {
-					align : 'left',
-					x : 3,
-					y : -3
+				tickPixelInterval : 150
+			},
+			yAxis : {
+				title : {
+					text : 'Value'
 				},
-				dateTimeLabelFormats : {
-					second : '%H:%M:%S',
-					minute : '%H:%M',
-					hour : '%H:%M',
-					day : '%m-%d',
-					week : '%m-%d',
-					month : '%Y-%m',
-					year : '%Y'
+				plotLines : [ {
+					value : 0,
+					width : 1,
+					color : '#808080'
+				} ]
+			},
+			tooltip : {
+				formatter : function() {
+					return '<b>'
+							+ this.series.name
+							+ ' Size</b><br/>'
+							+ Highcharts
+									.dateFormat('%Y-%m-%d %H:%M:%S', this.x)
+							+ '<br/>' + this.y;
 				}
 			},
-			yAxis : [ { // 第一个 Y 轴，放置在左边（默认在坐标）
-				title : {
-					text : null
-				},
-				labels : {
-					align : 'left',
-					x : 3,
-					y : 16,
-					format : '{value:.,0f}'
-				},
-				showFirstLabel : false
-			}, { // 第二个坐标轴，放置在右边
-				linkedTo : 0,
-				gridLineWidth : 0,
-				opposite : true,
-				title : {
-					text : null
-				},
-				labels : {
-					align : 'right',
-					x : -3,
-					y : 16,
-					format : '{value:.,0f}'
-				},
-				showFirstLabel : false
-			} ],
+			legend : {
+				align : 'right',
+				verticalAlign : 'top'
+			},
+			exporting : {
+				enabled : false
+			},
 			plotOptions : {
-				series : {
-					label : {
-						connectorAllowed : false
-					}
-				},
-				line : {
+				spline : {
 					dataLabels : {
 						enabled : true
-					}
+					},
+					enableMouseTracking : true
 				}
 			},
 			series : [ {
-				name : 'Size',
-				data : [ 43934, 52503, 57177, 69658, 97031, 119931, 137133,
-						154175 ]
-			} ],
-			responsive : {
-				rules : [ {
-					condition : {
-						maxWidth : 500
-					},
-					chartOptions : {
-						legend : {
-							layout : 'horizontal',
-							align : 'center',
-							verticalAlign : 'bottom'
-						}
+				name : 'Delay',
+				color : 'red',
+				data : (function() {
+					// generate an array of random data
+					var data = [], time = (new Date()).getTime(), i;
+					for (i = -19; i <= 0; i += 1) {
+						data.push({
+							x : time + i * 1000,
+							y : 0
+						});
 					}
-				} ]
-			}
+					return data;
+				}())
+			}, {
+				name : 'Ready',
+				color : 'green',
+				data : (function() {
+					// generate an array of random data
+					var data = [], time = (new Date()).getTime(), i;
+					for (i = -19; i <= 0; i += 1) {
+						data.push({
+							x : time + i * 1000,
+							y : 0
+						});
+					}
+					return data;
+				}())
+			}, {
+				name : 'Retain',
+				color : 'blue',
+				data : (function() {
+					// generate an array of random data
+					var data = [], time = (new Date()).getTime(), i;
+					for (i = -19; i <= 0; i += 1) {
+						data.push({
+							x : time + i * 1000,
+							y : 0
+						});
+					}
+					return data;
+				}())
+			} ]
 		};
-		return Highcharts.chart(tubename, options);
+		return Highcharts.chart(chartId, options);
 	}
 
-	function createRow(stats) {
-		var tsr = '<tr><td><a class="ajax-link" href="chart.html?tube='
-				+ stats.tubeName + '">' + stats.tubeName + '</a></td><td>'
-				+ stats.totalJobSize + '</td><td>' + stats.finishJobSize
-				+ '</td><td>' + stats.delayQueueSize + '</td><td>'
-				+ stats.readyQueueSize + '</td><td>' + stats.retainQueueSize
-				+ '</td><td>' + stats.failedQueueSize + '</td></tr>';
+	function upateChart(stats, chart) {
+		if (chart && stats) {
+			$("#totalSize").html(stats.totalJobSize);
+			$("#finishSize").html(stats.finishJobSize);
+			$("#failedSize").html(stats.failedQueueSize);
 
-		$("#tubeStatsList").append(tsr);
+			var x = stats.dateTime;
+			var series = chart.series;
+			series[0].addPoint([ x, stats.delayQueueSize ], true, true);
+			series[1].addPoint([ x, stats.readyQueueSize ], true, true);
+			series[2].addPoint([ x, stats.retainQueueSize ], true, true);
+		}
 	}
 
 	function URL(url) {
@@ -137,68 +140,66 @@
 		return this;
 	}
 
-	function upateChart(ts) {
+	$(document).ready(function() {
+		Highcharts.setOptions({
+			global : {
+				useUTC : false
+			}
+		});
 
-	}
-
-	$(document)
-			.ready(
-					function() {
-						Highcharts.setOptions({
-							global : {
-								useUTC : false
-							}
-						});
-
-						var tube = new URL(document.URL).param('tube') || '';
-						if (tube) {
-							$("#tubeName").html(tube);
-							var delayChart = createChart("delayChart",
-									"Delay Chart");
-							var readyChart = createChart("readyChart",
-									"Ready Chart");
-							var retainChart = createChart("retainChart",
-									"Retain Chart");
-
-							window.setInterval(function() {
-								$.getJSON("/api/tube/stats/" + tube, function(
-										data, status) {
-									if (data && data.code > 0) {
-										if (data.result) {
-											upateChart(data.result, delayChart,
-													readyChart, retainChart);
-										}
-									}
-								});
-							}, 3000);
+		var tube = new URL(document.URL).param('tube') || '';
+		if (tube) {
+			$("#tubeName").html(tube);
+			var statsChart = createChart("statsChart", tube);
+			window.setInterval(function() {
+				$.getJSON("/api/tube/stats/" + tube, function(data, status) {
+					if (data && data.code > 0) {
+						if (data.result) {
+							upateChart(data.result, statsChart);
 						}
-					});
+					}
+				});
+			}, 3000);
+		}
+	});
 </script>
 </head>
 <body>
 	<div class="navbar navbar-default" role="navigation">
 		<div class="navbar-inner">
 			<button type="button" class="navbar-toggle pull-left animated flip">
-				<span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span>
+				<span class="sr-only">Toggle navigation</span> <span
+					class="icon-bar"></span> <span class="icon-bar"></span> <span
+					class="icon-bar"></span>
 			</button>
-			<a class="navbar-brand" href="index.jsp"><img alt="Charisma Logo" src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
+			<a class="navbar-brand" href="index.jsp"><img alt="Charisma Logo"
+				src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
 			<!-- theme selector starts -->
 			<div class="btn-group pull-right theme-container animated tada">
-				<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-					<i class="glyphicon glyphicon-tint"></i><span class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span class="caret"></span>
+				<button class="btn btn-default dropdown-toggle"
+					data-toggle="dropdown">
+					<i class="glyphicon glyphicon-tint"></i><span
+						class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span
+						class="caret"></span>
 				</button>
 				<ul class="dropdown-menu" id="themes">
-					<li><a data-value="cerulean" href="#"><i class="whitespace"></i> Cerulean</a></li>
-					<li><a data-value="classic" href="#"><i class="whitespace"></i> Classic</a></li>
-					<li><a data-value="simplex" href="#"><i class="whitespace"></i> Simplex</a></li>
-					<li><a data-value="slate" href="#"><i class="whitespace"></i> Slate</a></li>
+					<li><a data-value="cerulean" href="#"><i
+							class="whitespace"></i> Cerulean</a></li>
+					<li><a data-value="classic" href="#"><i class="whitespace"></i>
+							Classic</a></li>
+					<li><a data-value="simplex" href="#"><i class="whitespace"></i>
+							Simplex</a></li>
+					<li><a data-value="slate" href="#"><i class="whitespace"></i>
+							Slate</a></li>
 				</ul>
 			</div>
 			<!-- theme selector ends -->
 			<ul class="collapse navbar-collapse nav navbar-nav top-menu">
 				<li>
 					<form class="navbar-search pull-left" action="view/article/query">
-						<input placeholder="Search" class="search-query form-control col-md-12" name="word" type="text">
+						<input placeholder="Search"
+							class="search-query form-control col-md-12" name="word"
+							type="text">
 					</form>
 				</li>
 			</ul>
@@ -215,27 +216,31 @@
 				</div>
 				<div class=" row">
 					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-user blue"></i>
+						<a data-toggle="tooltip" title="" class="well top-block" href="#">
+							<i class="glyphicon glyphicon-user blue"></i>
 							<div>Tube Name</div>
 							<div id="tubeName">sadfasdf</div>
 						</a>
 					</div>
 					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-envelope green"></i>
+						<a data-toggle="tooltip" title="" class="well top-block" href="#">
+							<i class="glyphicon glyphicon-envelope green"></i>
 							<div>Total Size</div>
-							<div id="totalSize">507</div>
+							<div id="totalSize">0</div>
 						</a>
 					</div>
 					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-envelope yellow"></i>
+						<a data-toggle="tooltip" title="" class="well top-block" href="#">
+							<i class="glyphicon glyphicon-envelope yellow"></i>
 							<div>Finish Size</div>
-							<div id="finishSize">507</div>
+							<div id="finishSize">0</div>
 						</a>
 					</div>
 					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-envelope red"></i>
+						<a data-toggle="tooltip" title="" class="well top-block" href="#">
+							<i class="glyphicon glyphicon-envelope red"></i>
 							<div>Failed Size</div>
-							<div id="failedSize">507</div>
+							<div id="failedSize">0</div>
 						</a>
 					</div>
 				</div>
@@ -247,13 +252,12 @@
 									<i class="glyphicon glyphicon-th"></i> Tube Status Chart
 								</h2>
 								<div class="box-icon">
-									<a href="#" class="btn btn-minimize btn-round btn-default"><i class="glyphicon glyphicon-chevron-up"></i></a>
+									<a href="#" class="btn btn-minimize btn-round btn-default"><i
+										class="glyphicon glyphicon-chevron-up"></i></a>
 								</div>
 							</div>
 							<div class="box-content" id="tubelist">
-								<div id="delayChart" style="width: 100%; height: 400px;"></div>
-								<div id="readyChart" style="width: 100%; height: 400px;"></div>
-								<div id="retainChart" style="width: 100%; height: 400px;"></div>
+								<div id="statsChart" style="width: 100%; height: 400px;"></div>
 							</div>
 						</div>
 					</div>
@@ -265,7 +269,8 @@
 		<!--/fluid-row-->
 		<hr>
 		<footer class="row">
-		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019 Grape Admin</p>
+		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019 Grape
+			Admin</p>
 		<p class="col-md-3 col-sm-3 col-xs-12 powered-by">
 			Powered by: <a href="http://usman.it/free-responsive-admin-template">Charisma</a>
 		</p>
