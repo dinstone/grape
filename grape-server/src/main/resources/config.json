@@ -1,12 +1,12 @@
 {
 	"vertx": {
 		"workerPoolSize": 4,
-		"eventLoopPoolSize": 2,
+		"eventLoopPoolSize": 4,
 		"blockedThreadCheckInterval": 1000
 	},
 	"verticle": {
 		"rest.instances": 2,
-		"http.instances": 0
+		"http.instances": 2
 	},
 	"web": {
 		"http.port": 9595,
@@ -15,7 +15,7 @@
 	"redis": {
 		"host": "127.0.0.1",
 		"port": 6379,
-		"maxTotal": 4,
+		"maxTotal": 8,
 		"minIdle": 1,
 		"timeout": 2000,
 		"maxWaitMillis": 3000,
