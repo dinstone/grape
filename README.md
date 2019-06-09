@@ -7,6 +7,13 @@ A job in Grape during its life it can be in one of four states: "delayed", "read
 Here is a picture of the typical job lifecycle:
 ![image](https://github.com/dinstone/grape/wiki/images/DelayJobStatemachine.png)
 
+## Admin UI
+Access grape admin endpoint: http://localhost:9595/
+
+![image](https://github.com/dinstone/grape/wiki/images/admin-main.jpeg)
+
+![image](https://github.com/dinstone/grape/wiki/images/admin-chart.png)
+
 ## Quick Start
 ### step 1: clone project from github
 ```
@@ -18,15 +25,15 @@ maven install
 ```
 ### step 3: deployment package
 ```
-unzip grape-server-1.1.0.zip
+unzip grape-server-1.2.0.zip
 ```
 ### step 4: start grape by script
 ```
-cd grape-server-1.1.0/bin
+cd grape-server-1.2.0/bin
 ./start.sh
 ```
 ### step 5: stop grape by script
 ```
-cd grape-server-1.1.0/bin
+cd grape-server-1.2.0/bin
 ./stop.sh
 ```
