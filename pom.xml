@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.dinstone.grape</groupId>
     <artifactId>grape-all</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
     <packaging>pom</packaging>
     <name>grape</name>
     <inceptionYear>2016~2019</inceptionYear>
