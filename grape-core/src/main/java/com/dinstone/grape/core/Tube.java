@@ -34,8 +34,6 @@ public class Tube {
 
     private static final Logger LOG = LoggerFactory.getLogger(Tube.class);
 
-    private static final String TUBE_PREFIX = "tube:";
-
     private final JedisPool jedisPool;
 
     private final String tubeName;
@@ -70,17 +68,24 @@ public class Tube {
      */
     private final String failedQueue;
 
-    public Tube(String tubeName, JedisPool jedisPool) {
+    public Tube(String group, String tubeName, JedisPool jedisPool) {
         this.jedisPool = jedisPool;
         this.tubeName = tubeName;
 
-        this.jobPrefix = TUBE_PREFIX + tubeName + ":job:";
-        this.tubeStats = TUBE_PREFIX + tubeName + ":stats";
+        String tubePrefix;
+        if (group != null && !group.isEmpty()) {
+            tubePrefix = group + ":tube:";
+        } else {
+            tubePrefix = "tube:";
+        }
 
-        this.delayQueue = TUBE_PREFIX + tubeName + ":queue:delay";
-        this.readyQueue = TUBE_PREFIX + tubeName + ":queue:ready";
-        this.retainQueue = TUBE_PREFIX + tubeName + ":queue:retain";
-        this.failedQueue = TUBE_PREFIX + tubeName + ":queue:failed";
+        this.jobPrefix = tubePrefix + tubeName + ":job:";
+        this.tubeStats = tubePrefix + tubeName + ":stats";
+
+        this.delayQueue = tubePrefix + tubeName + ":queue:delay";
+        this.readyQueue = tubePrefix + tubeName + ":queue:ready";
+        this.retainQueue = tubePrefix + tubeName + ":queue:retain";
+        this.failedQueue = tubePrefix + tubeName + ":queue:failed";
     }
 
     /**
@@ -142,13 +147,19 @@ public class Tube {
     }
 
     private void retainToReady(Jedis jedis) {
-        while (true) {
+        long expireTime = System.currentTimeMillis() + 10000;
+        boolean stop = false;
+        while (!stop) {
             Set<Tuple> jobScoreSet = jedis.zrangeWithScores(retainQueue, 0, 100);
             if (jobScoreSet == null || jobScoreSet.size() == 0) {
                 break;
             }
 
             long currentTime = System.currentTimeMillis();
+            if (currentTime > expireTime) {
+                break;
+            }
+
             for (Tuple jobScore : jobScoreSet) {
                 if (jobScore.getScore() < currentTime) {
                     String jobId = jobScore.getElement();
@@ -162,6 +173,7 @@ public class Tube {
                     jedis.zadd(readyQueue, currentTime, jobId);
                     jedis.zrem(retainQueue, jobId);
                 } else {
+                    stop = true;
                     break;
                 }
             }
@@ -169,13 +181,19 @@ public class Tube {
     }
 
     private void delayToReady(Jedis jedis) {
-        while (true) {
+        long expireTime = System.currentTimeMillis() + 10000;
+        boolean stop = false;
+        while (!stop) {
             Set<Tuple> jobScoreSet = jedis.zrangeWithScores(delayQueue, 0, 100);
             if (jobScoreSet == null || jobScoreSet.size() == 0) {
                 break;
             }
 
             long currentTime = System.currentTimeMillis();
+            if (currentTime > expireTime) {
+                break;
+            }
+
             for (Tuple jobScore : jobScoreSet) {
                 if (jobScore.getScore() < currentTime) {
                     String jobId = jobScore.getElement();
@@ -189,6 +207,7 @@ public class Tube {
                     jedis.zadd(readyQueue, currentTime, jobId);
                     jedis.zrem(delayQueue, jobId);
                 } else {
+                    stop = true;
                     break;
                 }
             }

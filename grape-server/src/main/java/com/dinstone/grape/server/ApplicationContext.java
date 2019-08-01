@@ -25,54 +25,62 @@ import redis.clients.jedis.Protocol;
 
 public class ApplicationContext implements Shareable {
 
-	private final JedisPool jedisPool;
+    private final JedisPool jedisPool;
 
-	private final Broker broker;
+    private final Broker broker;
 
-	public ApplicationContext(JsonObject config) {
+    public ApplicationContext(JsonObject config) {
 
-		this.jedisPool = initJedisPool(config);
+        this.jedisPool = initJedisPool(config);
 
-		this.broker = new Broker(jedisPool).start();
-	}
+        JsonObject brokerConfig = config.getJsonObject("broker");
+        if (brokerConfig == null) {
+            this.broker = new Broker(jedisPool).start();
+        } else {
+            String group = brokerConfig.getString("group");
+            int defaultSize = Runtime.getRuntime().availableProcessors();
+            int scheduledSize = brokerConfig.getInteger("scheduledSize", defaultSize);
+            this.broker = new Broker(jedisPool, group, scheduledSize).start();
+        }
+    }
 
-	private JedisPool initJedisPool(JsonObject config) {
-		JsonObject redisConfig = config.getJsonObject("redis");
+    private JedisPool initJedisPool(JsonObject config) {
+        JsonObject redisConfig = config.getJsonObject("redis");
 
-		JedisPoolConfig jedisConfig = new JedisPoolConfig();
-		jedisConfig.setTestOnBorrow(true);
-		jedisConfig.setTestWhileIdle(true);
-		jedisConfig.setMinIdle(redisConfig.getInteger("minIdle", 1));
-		jedisConfig.setMaxTotal(redisConfig.getInteger("maxTotal", 4));
-		jedisConfig.setMaxWaitMillis(redisConfig.getLong("maxWaitMillis", 3000L));
-		jedisConfig.setNumTestsPerEvictionRun(redisConfig.getInteger("numTestsPerEvictionRun", -1));
-		jedisConfig.setMinEvictableIdleTimeMillis(redisConfig.getLong("minEvictableIdleTimeMillis", 60000L));
-		jedisConfig.setTimeBetweenEvictionRunsMillis(redisConfig.getLong("timeBetweenEvictionRunsMillis", 30000L));
+        JedisPoolConfig jedisConfig = new JedisPoolConfig();
+        jedisConfig.setTestOnBorrow(false);
+        jedisConfig.setTestWhileIdle(true);
+        jedisConfig.setMinIdle(redisConfig.getInteger("minIdle", 1));
+        jedisConfig.setMaxTotal(redisConfig.getInteger("maxTotal", 4));
+        jedisConfig.setMaxWaitMillis(redisConfig.getLong("maxWaitMillis", 3000L));
+        jedisConfig.setNumTestsPerEvictionRun(redisConfig.getInteger("numTestsPerEvictionRun", -1));
+        jedisConfig.setMinEvictableIdleTimeMillis(redisConfig.getLong("minEvictableIdleTimeMillis", 60000L));
+        jedisConfig.setTimeBetweenEvictionRunsMillis(redisConfig.getLong("timeBetweenEvictionRunsMillis", 30000L));
 
-		if (redisConfig.containsKey("auth")) {
-			return new JedisPool(jedisConfig, redisConfig.getString("host"), redisConfig.getInteger("port"),
-					redisConfig.getInteger("timeout", Protocol.DEFAULT_TIMEOUT), redisConfig.getString("auth"));
-		} else {
-			return new JedisPool(jedisConfig, redisConfig.getString("host"), redisConfig.getInteger("port"),
-					redisConfig.getInteger("timeout", Protocol.DEFAULT_TIMEOUT));
-		}
-	}
+        if (redisConfig.containsKey("auth")) {
+            return new JedisPool(jedisConfig, redisConfig.getString("host"), redisConfig.getInteger("port"),
+                    redisConfig.getInteger("timeout", Protocol.DEFAULT_TIMEOUT), redisConfig.getString("auth"));
+        } else {
+            return new JedisPool(jedisConfig, redisConfig.getString("host"), redisConfig.getInteger("port"),
+                    redisConfig.getInteger("timeout", Protocol.DEFAULT_TIMEOUT));
+        }
+    }
 
-	public void destroy() {
-		if (broker != null) {
-			broker.stop();
-		}
-		if (jedisPool != null) {
-			jedisPool.destroy();
-		}
-	}
+    public void destroy() {
+        if (broker != null) {
+            broker.stop();
+        }
+        if (jedisPool != null) {
+            jedisPool.destroy();
+        }
+    }
 
-	public JedisPool getJedisPool() {
-		return jedisPool;
-	}
+    public JedisPool getJedisPool() {
+        return jedisPool;
+    }
 
-	public Broker getBroker() {
-		return broker;
-	}
+    public Broker getBroker() {
+        return broker;
+    }
 
 }

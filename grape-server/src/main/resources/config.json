@@ -12,6 +12,10 @@
 		"http.port": 9595,
 		"rest.port": 9521
 	},
+	"broker": {
+		"group": "",
+		"scheduledSize": 4
+	},
 	"redis": {
 		"host": "127.0.0.1",
 		"port": 6379,

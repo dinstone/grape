@@ -39,7 +39,13 @@ public class Broker {
 
     private static final String THREAD_PREFIX = "broker-schedule-thread-";
 
-    private static final String TUBE_SET = "tube:set";
+    private final String group;
+
+    private final String tubeSetKey;
+
+    private final String consumeLockPrefix;
+
+    private final String scheduleLockPrefix;
 
     private final JedisPool jedisPool;
 
@@ -50,16 +56,29 @@ public class Broker {
     private final ScheduledExecutorService executor;
 
     public Broker(JedisPool jedisPool) {
-        this(jedisPool, 2);
+        this(jedisPool, null, Runtime.getRuntime().availableProcessors());
     }
 
-    public Broker(JedisPool jedisPool, int scheduledSize) {
+    public Broker(JedisPool jedisPool, String group, int scheduledSize) {
         if (jedisPool == null) {
             throw new NullPointerException("jedisPool is null");
         }
         if (scheduledSize <= 0) {
             throw new IllegalArgumentException("scheduledSize must be greater than 0");
         }
+
+        if (group != null && !group.isEmpty()) {
+            this.group = group;
+            this.tubeSetKey = group + ":tube:set";
+            this.consumeLockPrefix = group + ":lock:consume:";
+            this.scheduleLockPrefix = group + ":lock:schedule:";
+        } else {
+            this.group = "";
+            this.tubeSetKey = "tube:set";
+            this.consumeLockPrefix = "lock:consume:";
+            this.scheduleLockPrefix = "lock:schedule:";
+        }
+
         this.jedisPool = jedisPool;
         this.tubeMap = new ConcurrentHashMap<>();
         this.taskMap = new ConcurrentHashMap<>();
@@ -69,7 +88,7 @@ public class Broker {
     public Set<String> tubeSet() {
         Jedis jedis = jedisPool.getResource();
         try {
-            return jedis.smembers(TUBE_SET);
+            return jedis.smembers(tubeSetKey);
         } finally {
             if (jedis != null) {
                 jedis.close();
@@ -98,7 +117,7 @@ public class Broker {
         Tube tube = tubeMap.get(tubeName);
         if (tube == null) {
             addTube(tubeName);
-            tube = new Tube(tubeName, jedisPool);
+            tube = new Tube(group, tubeName, jedisPool);
             tubeMap.putIfAbsent(tubeName, tube);
             tube = tubeMap.get(tubeName);
         }
@@ -106,10 +125,10 @@ public class Broker {
     }
 
     private void addTube(String tubeName) {
-        LOG.info("add tube {}", tubeName);
+        LOG.info("add tube {}/{}", group, tubeName);
         Jedis jedis = jedisPool.getResource();
         try {
-            jedis.sadd(TUBE_SET, tubeName);
+            jedis.sadd(tubeSetKey, tubeName);
         } finally {
             if (jedis != null) {
                 jedis.close();
@@ -139,7 +158,7 @@ public class Broker {
 
         Tube tube = loadTube(tubeName);
 
-        RedisLock consumeLock = new RedisLock(jedisPool, "lock:consume:" + tubeName, 30);
+        RedisLock consumeLock = new RedisLock(jedisPool, consumeLockPrefix + tubeName, 30);
         if (consumeLock.acquire()) {
             try {
                 return tube.consume(max);
@@ -191,12 +210,12 @@ public class Broker {
                 try {
                     dispatch();
                 } catch (Exception e) {
-                    LOG.warn("dispatch error: " + e.getMessage());
+                    LOG.warn("dispatch {} error: {}", group, e.getMessage());
                 }
             }
         }, 1, 2, TimeUnit.SECONDS);
 
-        LOG.info("Broker is started");
+        LOG.info("Broker[{}] is started", group);
         return this;
     }
 
@@ -206,7 +225,7 @@ public class Broker {
             executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.HOURS);
         } catch (InterruptedException e) {
         }
-        LOG.info("Broker is shutdown");
+        LOG.info("Broker[{}] is shutdown", group);
         return this;
     }
 
@@ -214,7 +233,7 @@ public class Broker {
         Set<String> tubeSet = tubeSet();
         for (String tubeName : tubeSet) {
             if (!taskMap.containsKey(tubeName)) {
-                Runnable task = new ScheduledTask(createTube(tubeName), jedisPool);
+                ScheduledTask task = new ScheduledTask(createTube(tubeName));
                 executor.scheduleWithFixedDelay(task, 0, 1, TimeUnit.SECONDS);
                 taskMap.put(tubeName, task);
             }
@@ -225,9 +244,9 @@ public class Broker {
         private final Tube tube;
         private final RedisLock lock;
 
-        private ScheduledTask(Tube tube, JedisPool jedisPool) {
+        private ScheduledTask(Tube tube) {
             this.tube = tube;
-            this.lock = new RedisLock(jedisPool, "lock:schedule:" + tube.name(), 30);
+            this.lock = new RedisLock(jedisPool, scheduleLockPrefix + tube.name(), 30);
         }
 
         @Override
