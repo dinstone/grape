@@ -112,7 +112,7 @@ public class JobApiHandler extends RestApiHandler {
             }
         }, false, ar -> {
             if (ar.succeeded()) {
-                success(ctx);
+                success(ctx, ar.result());
             } else {
                 failed(ctx, ar.cause());
             }
@@ -176,7 +176,7 @@ public class JobApiHandler extends RestApiHandler {
             }
         }, false, ar -> {
             if (ar.succeeded()) {
-                success(ctx);
+                success(ctx, ar.result());
             } else {
                 failed(ctx, ar.cause());
             }
@@ -216,7 +216,7 @@ public class JobApiHandler extends RestApiHandler {
             }
         }, false, ar -> {
             if (ar.succeeded()) {
-                success(ctx);
+                success(ctx, ar.result());
             } else {
                 failed(ctx, ar.cause());
             }
@@ -246,7 +246,7 @@ public class JobApiHandler extends RestApiHandler {
             }
         }, false, ar -> {
             if (ar.succeeded()) {
-                success(ctx);
+                success(ctx, ar.result());
             } else {
                 failed(ctx, ar.cause());
             }
@@ -321,7 +321,7 @@ public class JobApiHandler extends RestApiHandler {
             }
         }, false, ar -> {
             if (ar.succeeded()) {
-                success(ctx);
+                success(ctx, ar.result());
             } else {
                 failed(ctx, ar.cause());
             }
@@ -351,27 +351,11 @@ public class JobApiHandler extends RestApiHandler {
             }
         }, false, ar -> {
             if (ar.succeeded()) {
-                success(ctx);
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
-
-    @Get("/tubes")
-    public void tubes(@Context RoutingContext ctx) {
-        ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.tubeSet());
-            } catch (Exception e) {
-                future.fail(e);
-            }
-        }, false, ar -> {
-            if (ar.succeeded()) {
                 success(ctx, ar.result());
             } else {
                 failed(ctx, ar.cause());
             }
         });
     }
+
 }

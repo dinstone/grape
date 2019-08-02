@@ -39,6 +39,7 @@ public abstract class RestApiHandler {
     protected void success(RoutingContext ctx, Object result) {
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("code", "1");
+        res.put("message", "success");
         if (result != null) {
             res.put("result", result);
         }
