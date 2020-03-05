@@ -6,7 +6,7 @@ $(document).ready(
 
 			// themes, change CSS with JS
 			// default theme(CSS) is cerulean, change it if needed
-			var defaultTheme = 'cerulean';
+			var defaultTheme = 'classic';
 			var currentTheme = $.cookie('currentTheme') == null ? defaultTheme : $.cookie('currentTheme');
 			var msie = navigator.userAgent.match(/msie/i);
 			$.browser = {};
@@ -44,9 +44,9 @@ $(document).ready(
 
 			function switchTheme(themeName) {
 				if (themeName == 'classic') {
-					$('#bs-css').attr('href', 'bcs/bootstrap/dist/css/bootstrap.min.css');
+					$('#bs-css').attr('href', 'bcs/css/bootstrap.min.css');
 				} else {
-					$('#bs-css').attr('href', 'css/bootstrap-' + themeName + '.min.css');
+					$('#bs-css').attr('href', 'bcs/css/bootstrap-' + themeName + '.min.css');
 				}
 
 				$('#themes i').removeClass('glyphicon glyphicon-ok whitespace').addClass('whitespace');

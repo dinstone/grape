@@ -1,0 +1,15 @@
+{
+	"admin": {
+		"password": "grape",
+		"roles": [
+			"writer",
+			"reader"
+		]
+	},
+	"guid": {
+		"pwd": "grape",
+		"roles": [
+			"reader"
+		]
+	}
+}

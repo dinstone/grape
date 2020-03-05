@@ -5,14 +5,15 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="shortcut icon" href="img/favicon.ico">
-<link id="bs-css" href="css/bootstrap-cerulean.min.css" rel="stylesheet">
-<link href="css/charisma-app.css" rel="stylesheet">
-<script src="bcs/jquery/jquery.min.js"></script>
-<script src="bcs/bootstrap/dist/js/bootstrap.min.js"></script>
+<link id="bs-css" href="bcs/css/bootstrap.min.css" rel="stylesheet">
+<link href="css/charisma.app.css" rel="stylesheet">
+<script src="bcs/js/jquery.min.js"></script>
+<script src="bcs/js/bootstrap.min.js"></script>
 <script src="js/jquery.cookie.js"></script>
 <script src="js/jquery.history.js"></script>
-<script src="js/charisma.js"></script>
-<script src="js/highcharts.js"></script>
+<script src="js/autosize.min.js"></script>
+<script src="js/charisma.app.js"></script>
+<script src="js/highcharts.min.js"></script>
 <script type="text/javascript">
 	function createChart(chartId, titleName) {
 		var options = {
@@ -177,9 +178,7 @@
 					<i class="glyphicon glyphicon-tint"></i><span class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span class="caret"></span>
 				</button>
 				<ul class="dropdown-menu" id="themes">
-					<li><a data-value="cerulean" href="#"><i class="whitespace"></i> Cerulean</a></li>
 					<li><a data-value="classic" href="#"><i class="whitespace"></i> Classic</a></li>
-					<li><a data-value="simplex" href="#"><i class="whitespace"></i> Simplex</a></li>
 					<li><a data-value="slate" href="#"><i class="whitespace"></i> Slate</a></li>
 				</ul>
 			</div>

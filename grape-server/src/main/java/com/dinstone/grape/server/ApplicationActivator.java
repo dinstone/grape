@@ -50,6 +50,9 @@ public class ApplicationActivator {
 
         vertx = VertxHelper.createVertx(loadVertxOptions(config));
 
+        JsonObject userConfig = ConfigHelper.loadConfig("user.json");
+        config.put("users", userConfig);
+        
         GrapeVerticleFactory factory = new GrapeVerticleFactory(context);
         JsonObject vconfig = config.getJsonObject("verticle", new JsonObject());
 
