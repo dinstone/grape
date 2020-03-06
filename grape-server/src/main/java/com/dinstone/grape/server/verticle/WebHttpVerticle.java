@@ -61,8 +61,8 @@ public class WebHttpVerticle extends AbstractVerticle {
     @Override
     public void start(Future<Void> startFuture) {
         Router mainRouter = Router.router(vertx);
-        mainRouter.route().failureHandler(failuer()).handler(new AccessLogHandler()).handler(CookieHandler.create())
-                .handler(SessionHandler.create(LocalSessionStore.create(vertx)).setSessionCookieName("VX-API.session"));
+        mainRouter.route().failureHandler(failureHandler()).handler(new AccessLogHandler())
+                .handler(CookieHandler.create()).handler(sessionHandler());
 
         // api route
         RouterBuilder routerBuilder = RouterBuilder.create(vertx).handler(checkApiHandler())
@@ -103,6 +103,10 @@ public class WebHttpVerticle extends AbstractVerticle {
                 startFuture.fail(ar.cause());
             }
         });
+    }
+
+    private SessionHandler sessionHandler() {
+        return SessionHandler.create(LocalSessionStore.create(vertx)).setSessionCookieName("grape.session");
     }
 
     private Handler<RoutingContext> checkHtml() {
@@ -155,7 +159,7 @@ public class WebHttpVerticle extends AbstractVerticle {
         };
     }
 
-    private Handler<RoutingContext> failuer() {
+    private Handler<RoutingContext> failureHandler() {
         return rc -> {
             LOG.error("failure handle for {}, {}:{}", rc.request().path(), rc.statusCode(), rc.failure());
             if (rc.failure() != null) {

@@ -5,9 +5,8 @@ $(document).ready(
 			var ctx = new URL(url).param('ctx') || '';
 
 			// themes, change CSS with JS
-			// default theme(CSS) is cerulean, change it if needed
 			var defaultTheme = 'classic';
-			var currentTheme = $.cookie('currentTheme') == null ? defaultTheme : $.cookie('currentTheme');
+			var currentTheme = $.cookie('app.theme') == null ? defaultTheme : $.cookie('app.theme');
 			var msie = navigator.userAgent.match(/msie/i);
 			$.browser = {};
 			$.browser.msie = {};
@@ -36,7 +35,7 @@ $(document).ready(
 			$('#themes a').click(function(e) {
 				e.preventDefault();
 				currentTheme = $(this).attr('data-value');
-				$.cookie('currentTheme', currentTheme, {
+				$.cookie('app.theme', currentTheme, {
 					expires : 365
 				});
 				switchTheme(currentTheme);
@@ -84,26 +83,22 @@ $(document).ready(
 
 			$.ajaxSetup({
 				error : function(jqXHR, textStatus, errorThrown) {
-					var msg = "未知错误,你确定不是黑客或火星人？";
+					var msg = "unkown error!";
 					switch (jqXHR.status) {
 					case (500):
-						msg = "服务器系统内部错误,请稍后再试.";
+						msg = "service error, please try again later.";
 						break;
 					case (401):
-						msg = "登录会话失效，请重新登录系统.";
-						$("#confirm").click(function() {
-							window.location = "index.jsp"
-						});
+						msg = "session is invalid, please login again.";
 						break;
 					case (403):
-						msg = "无权限执行此操作,请联系管理员.";
+						msg = "your are forbidden, please link admin.";
 						break;
 					case (408):
-						msg = "请求超时,请稍后再试.";
+						msg = "request timeout, please try again later.";
 						break;
 					}
-					$("#errorDialog .modal-body p").html(msg);
-					$("#errorDialog").modal('show');
+					alert(msg);
 				}
 			});
 

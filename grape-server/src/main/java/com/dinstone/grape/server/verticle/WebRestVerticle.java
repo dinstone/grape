@@ -33,6 +33,7 @@ import io.vertx.core.http.HttpConnection;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
 
 public class WebRestVerticle extends AbstractVerticle {
 
@@ -55,20 +56,7 @@ public class WebRestVerticle extends AbstractVerticle {
     @Override
     public void start(Future<Void> startFuture) {
         Router mainRouter = Router.router(vertx);
-        mainRouter.route().failureHandler(rc -> {
-            LOG.error("failure handle for {}, {}:{}", rc.request().path(), rc.statusCode(), rc.failure());
-            if (rc.failure() != null) {
-                if (rc.statusCode() == 200) {
-                    rc.response().setStatusCode(500).end(rc.failure().getMessage());
-                } else {
-                    rc.response().end(rc.failure().getMessage());
-                }
-            } else {
-                rc.response().setStatusCode(rc.statusCode()).end();
-            }
-        });
-
-        mainRouter.route().handler(new AccessLogHandler());
+        mainRouter.route().failureHandler(failureHandler()).handler(new AccessLogHandler());
 
         RouterBuilder routerBuilder = RouterBuilder.create(vertx);
         routerBuilder.handler(new JobApiHandler(context));
@@ -106,5 +94,20 @@ public class WebRestVerticle extends AbstractVerticle {
                 startFuture.fail(ar.cause());
             }
         });
+    }
+
+    private Handler<RoutingContext> failureHandler() {
+        return rc -> {
+            LOG.error("failure handle for {}, {}:{}", rc.request().path(), rc.statusCode(), rc.failure());
+            if (rc.failure() != null) {
+                if (rc.statusCode() == 200) {
+                    rc.response().setStatusCode(500).end(rc.failure().getMessage());
+                } else {
+                    rc.response().setStatusCode(rc.statusCode()).end(rc.failure().getMessage());
+                }
+            } else {
+                rc.response().setStatusCode(rc.statusCode()).end();
+            }
+        };
     }
 }
