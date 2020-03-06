@@ -46,13 +46,12 @@ public class ApplicationActivator {
             throw new IllegalStateException("rest.port==http.port");
         }
 
+        config.put("users", ConfigHelper.loadConfig("user.json"));
+
         context = new ApplicationContext(config);
 
         vertx = VertxHelper.createVertx(loadVertxOptions(config));
 
-        JsonObject userConfig = ConfigHelper.loadConfig("user.json");
-        config.put("users", userConfig);
-        
         GrapeVerticleFactory factory = new GrapeVerticleFactory(context);
         JsonObject vconfig = config.getJsonObject("verticle", new JsonObject());
 

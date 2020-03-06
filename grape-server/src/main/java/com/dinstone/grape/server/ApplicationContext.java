@@ -16,6 +16,8 @@
 package com.dinstone.grape.server;
 
 import com.dinstone.grape.core.Broker;
+import com.dinstone.grape.server.authen.AuthenProvider;
+import com.dinstone.grape.server.authen.LocalAuthenProvider;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.shareddata.Shareable;
@@ -28,6 +30,8 @@ public class ApplicationContext implements Shareable {
     private final JedisPool jedisPool;
 
     private final Broker broker;
+
+    private AuthenProvider authenProvider;
 
     public ApplicationContext(JsonObject config) {
 
@@ -42,6 +46,8 @@ public class ApplicationContext implements Shareable {
             int scheduledSize = brokerConfig.getInteger("scheduledSize", defaultSize);
             this.broker = new Broker(jedisPool, group, scheduledSize).start();
         }
+
+        authenProvider = new LocalAuthenProvider(config.getJsonObject("users"));
     }
 
     private JedisPool initJedisPool(JsonObject config) {
@@ -81,6 +87,10 @@ public class ApplicationContext implements Shareable {
 
     public Broker getBroker() {
         return broker;
+    }
+
+    public AuthenProvider getAuthenProvider() {
+        return authenProvider;
     }
 
 }

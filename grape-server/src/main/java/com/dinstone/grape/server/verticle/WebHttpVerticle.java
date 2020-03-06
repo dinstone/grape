@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com.dinstone.grape.server.ApplicationContext;
 import com.dinstone.grape.server.handler.AccessLogHandler;
+import com.dinstone.grape.server.handler.AuthenApiHandler;
 import com.dinstone.grape.server.handler.TubeApiHandler;
 import com.dinstone.vertx.web.RouterBuilder;
 
@@ -29,10 +30,15 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpConnection;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.CookieHandler;
+import io.vertx.ext.web.handler.SessionHandler;
 import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.ext.web.sstore.LocalSessionStore;
 
 public class WebHttpVerticle extends AbstractVerticle {
 
@@ -55,25 +61,16 @@ public class WebHttpVerticle extends AbstractVerticle {
     @Override
     public void start(Future<Void> startFuture) {
         Router mainRouter = Router.router(vertx);
-        mainRouter.route().failureHandler(rc -> {
-            LOG.error("failure handle for {}, {}:{}", rc.request().path(), rc.statusCode(), rc.failure());
-            if (rc.failure() != null) {
-                if (rc.statusCode() == 200) {
-                    rc.response().setStatusCode(500).end(rc.failure().getMessage());
-                } else {
-                    rc.response().end(rc.failure().getMessage());
-                }
-            } else {
-                rc.response().setStatusCode(rc.statusCode()).end();
-            }
-        });
-        mainRouter.route().handler(new AccessLogHandler());
+        mainRouter.route().failureHandler(failuer()).handler(new AccessLogHandler()).handler(CookieHandler.create())
+                .handler(SessionHandler.create(LocalSessionStore.create(vertx)).setSessionCookieName("VX-API.session"));
 
-        RouterBuilder routerBuilder = RouterBuilder.create(vertx);
-        routerBuilder.handler(new TubeApiHandler(context));
+        // api route
+        RouterBuilder routerBuilder = RouterBuilder.create(vertx).handler(checkApiHandler())
+                .handler(new TubeApiHandler(context)).handler(new AuthenApiHandler(context));
         mainRouter.mountSubRouter("/api", routerBuilder.build());
 
-        mainRouter.route("/*").handler(StaticHandler.create().setCachingEnabled(false));
+        // static file route
+        mainRouter.route("/*").handler(checkHtml()).handler(StaticHandler.create().setCachingEnabled(false));
 
         int serverPort = config.getJsonObject("web", new JsonObject()).getInteger("http.port", 9595);
         HttpServerOptions serverOptions = new HttpServerOptions().setIdleTimeout(180);
@@ -106,5 +103,70 @@ public class WebHttpVerticle extends AbstractVerticle {
                 startFuture.fail(ar.cause());
             }
         });
+    }
+
+    private Handler<RoutingContext> checkHtml() {
+        return rc -> {
+            String path = rc.request().path();
+            // index page
+            if ("/".equals(path)) {
+                rc.reroute("/index.html");
+                return;
+            }
+
+            // skip non *.html
+            if (!path.endsWith(".html")) {
+                rc.next();
+                return;
+            }
+
+            // ignore login.html
+            String loginPage = "/login.html";
+            if (loginPage.equals(path)) {
+                rc.next();
+                return;
+            }
+
+            // check authen
+            if (rc.session().get("user") == null) {
+                rc.response().putHeader(HttpHeaders.LOCATION, loginPage).setStatusCode(302)
+                        .end("Redirecting to " + loginPage + ".");
+            } else {
+                rc.next();
+            }
+        };
+    }
+
+    private Handler<RoutingContext> checkApiHandler() {
+        return rc -> {
+            // igonre
+            String path = rc.request().path();
+            if (path.contains("login") || path.contains("logout")) {
+                rc.next();
+                return;
+            }
+
+            // check
+            if (rc.session().get("user") == null) {
+                rc.response().setStatusCode(401).end();
+            } else {
+                rc.next();
+            }
+        };
+    }
+
+    private Handler<RoutingContext> failuer() {
+        return rc -> {
+            LOG.error("failure handle for {}, {}:{}", rc.request().path(), rc.statusCode(), rc.failure());
+            if (rc.failure() != null) {
+                if (rc.statusCode() == 200) {
+                    rc.response().setStatusCode(500).end(rc.failure().getMessage());
+                } else {
+                    rc.response().setStatusCode(rc.statusCode()).end(rc.failure().getMessage());
+                }
+            } else {
+                rc.response().setStatusCode(rc.statusCode()).end();
+            }
+        };
     }
 }
