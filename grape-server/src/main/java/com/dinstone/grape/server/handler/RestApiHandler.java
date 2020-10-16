@@ -19,12 +19,20 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.dinstone.grape.core.Broker;
+import com.dinstone.grape.exception.BusinessException;
+import com.dinstone.grape.exception.ErrorCode;
 import com.dinstone.grape.server.ApplicationContext;
 
 import io.vertx.core.json.Json;
 import io.vertx.ext.web.RoutingContext;
 
 public abstract class RestApiHandler {
+
+    private static final int SUCCESS_CODE = 0;
+    private static final int FAILURE_CODE = 9999;
+
+    private static final int CLIENT_ERROR_STATUS_CODE = 400;
+    private static final int SERVER_ERROR_STATUS_CODE = 500;
 
     protected Broker broker;
 
@@ -37,27 +45,45 @@ public abstract class RestApiHandler {
     }
 
     protected void success(RoutingContext ctx, Object result) {
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("code", "1");
-        res.put("message", "success");
+        Map<String, Object> jo = new LinkedHashMap<>();
+        jo.put("code", SUCCESS_CODE);
         if (result != null) {
-            res.put("result", result);
+            jo.put("data", result);
         }
-        ctx.response().end(Json.encode(res));
+        ctx.response().end(Json.encode(jo));
     }
 
-    protected void failed(RoutingContext ctx, String message) {
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("code", "-1");
-        res.put("message", message);
-        ctx.response().end(Json.encode(res));
+    protected void failed(RoutingContext ctx, ErrorCode code, String message) {
+        Map<String, Object> jo = new LinkedHashMap<>();
+        jo.put("code", code.getValue());
+        jo.put("desc", message);
+        ctx.response().setStatusCode(CLIENT_ERROR_STATUS_CODE).end(Json.encode(jo));
     }
 
     protected void failed(RoutingContext ctx, Throwable throwable) {
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("code", "-1");
-        res.put("message", throwable == null ? "" : throwable.getMessage());
-        ctx.response().end(Json.encode(res));
+        Map<String, Object> jo = new LinkedHashMap<>();
+        if (throwable instanceof BusinessException) {
+            BusinessException error = (BusinessException) throwable;
+            jo.put("code", error.getErrorCode().getValue());
+            jo.put("desc", error.getMessage());
+            ctx.response().setStatusCode(CLIENT_ERROR_STATUS_CODE);
+        } else {
+            jo.put("code", FAILURE_CODE);
+            jo.put("desc", getMessage(throwable));
+            ctx.response().setStatusCode(SERVER_ERROR_STATUS_CODE);
+        }
+        ctx.response().end(Json.encode(jo));
+    }
+
+    private String getMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "unkwon exception";
+        }
+        String message = throwable.getMessage();
+        if (message == null) {
+            return getMessage(throwable.getCause());
+        }
+        return message;
     }
 
 }

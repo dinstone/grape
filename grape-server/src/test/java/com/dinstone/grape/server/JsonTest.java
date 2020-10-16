@@ -36,9 +36,16 @@ public class JsonTest {
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("code", "1");
-        res.put("result", result);
+        res.put("data", result);
 
         System.out.println(Json.encode(res));
+
+        System.out.println(Json.encode(true));
+        System.out.println(Json.encode("i'm string"));
+
+        // Failed to decode: Unrecognized token 'i': was expecting ('true', 'false' or
+        // 'null')
+        // System.out.println(Json.decodeValue("i'm another string"));
     }
 
     private static void jsonApi() {
@@ -47,7 +54,7 @@ public class JsonTest {
         result.add(new Job("j-1", 1000, 1200, new byte[] { 32, 33, 34 }));
         result.add(new Job("j-1", 1000, 1200, new byte[] { 36, 37, 38 }));
         if (result != null) {
-            res.put("result", result);
+            res.put("data", result);
         }
         System.out.println(res.encode());
     }

@@ -26,6 +26,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.dinstone.grape.exception.ApplicationException;
+
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Tuple;
@@ -190,7 +192,7 @@ public class Tube {
             }
 
             long currentTime = System.currentTimeMillis();
-            if (currentTime > expireTime) {
+            if (currentTime >= expireTime) {
                 break;
             }
 
@@ -488,7 +490,7 @@ public class Tube {
         try {
             res.put("data", encode(job.getData()));
         } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
+            throw new ApplicationException(e);
         }
         return res;
     }

@@ -27,6 +27,9 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.dinstone.grape.exception.ApplicationException;
+import com.dinstone.grape.exception.BusinessException;
+import com.dinstone.grape.exception.TubeErrorCode;
 import com.dinstone.grape.util.NamedThreadFactory;
 import com.dinstone.grape.util.RedisLock;
 
@@ -61,10 +64,10 @@ public class Broker {
 
     public Broker(JedisPool jedisPool, String group, int scheduledSize) {
         if (jedisPool == null) {
-            throw new NullPointerException("jedisPool is null");
+            throw new ApplicationException("jedisPool is null");
         }
         if (scheduledSize <= 0) {
-            throw new IllegalArgumentException("scheduledSize must be greater than 0");
+            throw new ApplicationException("scheduledSize must be greater than 0");
         }
 
         if (group != null && !group.isEmpty()) {
@@ -110,7 +113,7 @@ public class Broker {
             return createTube(tubeName);
         }
 
-        throw new RuntimeException("unkown tube '" + tubeName + "'");
+        throw new BusinessException(TubeErrorCode.UNKOWN, "unkown tube '" + tubeName + "'");
     }
 
     public Tube createTube(String tubeName) {
@@ -138,12 +141,12 @@ public class Broker {
 
     public boolean produce(String tubeName, Job job) {
         if (tubeName == null || tubeName.length() == 0) {
-            throw new IllegalArgumentException("tubeName is empty");
+            throw new BusinessException(TubeErrorCode.EMPTY, "tubeName is empty");
         }
         if (job.getTtr() < 1000) {
             job.setTtr(1000);
         }
-        return createTube(tubeName).produce(job);
+        return loadTube(tubeName).produce(job);
     }
 
     public boolean delete(String tubeName, String jobId) {

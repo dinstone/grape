@@ -24,6 +24,7 @@ import com.dinstone.grape.server.ApplicationContext;
 import com.dinstone.vertx.web.annotation.Context;
 import com.dinstone.vertx.web.annotation.Get;
 import com.dinstone.vertx.web.annotation.PathParam;
+import com.dinstone.vertx.web.annotation.Post;
 import com.dinstone.vertx.web.annotation.Produces;
 import com.dinstone.vertx.web.annotation.WebHandler;
 
@@ -37,14 +38,30 @@ public class TubeApiHandler extends RestApiHandler {
         super(context);
     }
 
+    @Post("/create")
+    public void create(@Context RoutingContext ctx) {
+        String tubeName = ctx.request().getParam("tube");
+        if (tubeName == null || tubeName.length() == 0) {
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+            return;
+        }
+
+        ctx.vertx().executeBlocking(future -> {
+            broker.createTube(tubeName);
+            future.complete(true);
+        }, false, ar -> {
+            if (ar.succeeded()) {
+                success(ctx, ar.result());
+            } else {
+                failed(ctx, ar.cause());
+            }
+        });
+    }
+
     @Get("/set")
     public void set(@Context RoutingContext ctx) {
         ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.tubeSet());
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            future.complete(broker.tubeSet());
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());
@@ -57,16 +74,12 @@ public class TubeApiHandler extends RestApiHandler {
     @Get("/stats")
     public void stats(@Context RoutingContext ctx) {
         ctx.vertx().executeBlocking(future -> {
-            try {
-                List<Stats> stats = new ArrayList<>();
-                Set<String> tubes = broker.tubeSet();
-                for (String tubeName : tubes) {
-                    stats.add(broker.stats(tubeName));
-                }
-                future.complete(stats);
-            } catch (Exception e) {
-                future.fail(e);
+            List<Stats> stats = new ArrayList<>();
+            Set<String> tubes = broker.tubeSet();
+            for (String tubeName : tubes) {
+                stats.add(broker.stats(tubeName));
             }
+            future.complete(stats);
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());
@@ -79,15 +92,11 @@ public class TubeApiHandler extends RestApiHandler {
     @Get("/stats/:tubeName")
     public void stats(@Context RoutingContext ctx, @PathParam("tubeName") String tubeName) {
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
         ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.stats(tubeName));
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            future.complete(broker.stats(tubeName));
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());

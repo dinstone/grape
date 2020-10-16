@@ -24,12 +24,14 @@ import com.dinstone.grape.server.handler.JobApiHandler;
 import com.dinstone.grape.server.handler.TubeApiHandler;
 import com.dinstone.vertx.web.RouterBuilder;
 
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpConnection;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -56,6 +58,18 @@ public class WebRestVerticle extends AbstractVerticle {
     @Override
     public void start(Future<Void> startFuture) {
         Router mainRouter = Router.router(vertx);
+        mainRouter.errorHandler(404, rc -> {
+            // Send back default 404
+            rc.response().setStatusMessage("Not Found").setStatusCode(404);
+            if (rc.request().method() == HttpMethod.HEAD) {
+                // HEAD responses don't have a body
+                rc.response().end();
+            } else {
+                JsonObject jo = new JsonObject().put("code", 404).put("desc", "invalid path:" + rc.request().path());
+                rc.response().putHeader(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8")
+                        .end(jo.encode());
+            }
+        });
         mainRouter.route().failureHandler(failureHandler()).handler(new AccessLogHandler());
 
         RouterBuilder routerBuilder = RouterBuilder.create(vertx);

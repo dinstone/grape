@@ -154,9 +154,9 @@
 			var statsChart = createChart("statsChart", tube);
 			window.setInterval(function() {
 				$.getJSON("/api/tube/stats/" + tube, function(data, status) {
-					if (data && data.code > 0) {
-						if (data.result) {
-							upateChart(data.result, statsChart);
+					if (data.code == 0) {
+						if (data.data) {
+							upateChart(data.data, statsChart);
 						}
 					}
 				});

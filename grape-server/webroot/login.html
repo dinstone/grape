@@ -31,10 +31,10 @@
 			params.password = $("#password").val();
 			var data = JSON.stringify(params);
 			$.post("/api/authen/login", data, function(data, status) {
-				if (data && data.code > 0) {
+				if (data.code == 0) {
 					$(location).attr('href', "/index.html");
 				} else {
-					$("#tip").html(data.message);
+					$("#tip").html(data.desc);
 				}
 			}, "json");
 		});

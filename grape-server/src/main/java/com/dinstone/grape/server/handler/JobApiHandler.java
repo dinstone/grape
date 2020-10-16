@@ -41,13 +41,13 @@ public class JobApiHandler extends RestApiHandler {
     public void produce(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
 
         String id = ctx.request().getParam("id");
         if (id == null || id.length() == 0) {
-            failed(ctx, "id is empty");
+            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
             return;
         }
 
@@ -56,7 +56,7 @@ public class JobApiHandler extends RestApiHandler {
             try {
                 dtr = Long.parseLong(ctx.request().getParam("dtr"));
             } catch (Exception e) {
-                failed(ctx, "dtr is invalid");
+                failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
                 return;
             }
         }
@@ -66,7 +66,7 @@ public class JobApiHandler extends RestApiHandler {
             try {
                 ttr = Long.parseLong(ctx.request().getParam("ttr"));
             } catch (Exception e) {
-                failed(ctx, "ttr is invalid");
+                failed(ctx, ValidErrorCode.JOB_TTR_INVALID, "job ttr is invalid");
                 return;
             }
         }
@@ -75,14 +75,10 @@ public class JobApiHandler extends RestApiHandler {
         Job job = new Job(id, dtr, ttr, data);
 
         ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.produce(tubeName, job));
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            future.complete(broker.produce(tubeName, job));
         }, false, ar -> {
             if (ar.succeeded()) {
-                success(ctx);
+                success(ctx, ar.result());
             } else {
                 failed(ctx, ar.cause());
             }
@@ -94,22 +90,18 @@ public class JobApiHandler extends RestApiHandler {
     public void delete(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
 
         String id = ctx.request().getParam("id");
         if (id == null || id.length() == 0) {
-            failed(ctx, "id is empty");
+            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
             return;
         }
 
         ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.delete(tubeName, id));
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            future.complete(broker.delete(tubeName, id));
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());
@@ -123,7 +115,7 @@ public class JobApiHandler extends RestApiHandler {
     public void consume(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
 
@@ -139,12 +131,8 @@ public class JobApiHandler extends RestApiHandler {
 
         final long maxCount = maxParam;
         ctx.vertx().executeBlocking(future -> {
-            try {
-                List<Job> jobs = broker.consume(tubeName, maxCount);
-                future.complete(jobs);
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            List<Job> jobs = broker.consume(tubeName, maxCount);
+            future.complete(jobs);
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());
@@ -158,22 +146,18 @@ public class JobApiHandler extends RestApiHandler {
     public void finish(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
 
         String id = ctx.request().getParam("id");
         if (id == null || id.length() == 0) {
-            failed(ctx, "id is empty");
+            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
             return;
         }
 
         ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.finish(tubeName, id));
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            future.complete(broker.finish(tubeName, id));
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());
@@ -187,13 +171,13 @@ public class JobApiHandler extends RestApiHandler {
     public void release(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
 
         String id = ctx.request().getParam("id");
         if (id == null || id.length() == 0) {
-            failed(ctx, "id is empty");
+            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
             return;
         }
 
@@ -202,18 +186,14 @@ public class JobApiHandler extends RestApiHandler {
             try {
                 dtr = Long.parseLong(ctx.request().getParam("dtr"));
             } catch (Exception e) {
-                failed(ctx, "dtr is invalid");
+                failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
                 return;
             }
         }
 
         final long dtrParam = dtr;
         ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.release(tubeName, id, dtrParam));
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            future.complete(broker.release(tubeName, id, dtrParam));
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());
@@ -228,22 +208,18 @@ public class JobApiHandler extends RestApiHandler {
     public void failure(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
 
         String id = ctx.request().getParam("id");
         if (id == null || id.length() == 0) {
-            failed(ctx, "id is empty");
+            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
             return;
         }
 
         ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.failure(tubeName, id));
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            future.complete(broker.failure(tubeName, id));
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());
@@ -257,7 +233,7 @@ public class JobApiHandler extends RestApiHandler {
     public void peek(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
 
@@ -273,12 +249,8 @@ public class JobApiHandler extends RestApiHandler {
 
         final long maxCount = maxParam;
         ctx.vertx().executeBlocking(future -> {
-            try {
-                List<Job> jobs = broker.peek(tubeName, maxCount);
-                future.complete(jobs);
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            List<Job> jobs = broker.peek(tubeName, maxCount);
+            future.complete(jobs);
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());
@@ -292,13 +264,13 @@ public class JobApiHandler extends RestApiHandler {
     public void kick(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
 
         String id = ctx.request().getParam("id");
         if (id == null || id.length() == 0) {
-            failed(ctx, "id is empty");
+            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
             return;
         }
 
@@ -307,7 +279,7 @@ public class JobApiHandler extends RestApiHandler {
             try {
                 dtr = Long.parseLong(ctx.request().getParam("dtr"));
             } catch (Exception e) {
-                failed(ctx, "dtr is invalid");
+                failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
                 return;
             }
         }
@@ -333,22 +305,18 @@ public class JobApiHandler extends RestApiHandler {
     public void discard(@Context RoutingContext ctx) {
         String tubeName = ctx.request().getParam("tube");
         if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, "tube is empty");
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
             return;
         }
 
         String id = ctx.request().getParam("id");
         if (id == null || id.length() == 0) {
-            failed(ctx, "id is empty");
+            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
             return;
         }
 
         ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.discard(tubeName, id));
-            } catch (Exception e) {
-                future.fail(e);
-            }
+            future.complete(broker.discard(tubeName, id));
         }, false, ar -> {
             if (ar.succeeded()) {
                 success(ctx, ar.result());

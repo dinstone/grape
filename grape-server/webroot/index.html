@@ -29,9 +29,9 @@
 	$(document).ready(function() {
 		// load stats
 		$.getJSON("/api/tube/stats", function(data, status) {
-			if (data && data.code > 0) {
-				if (data.result) {
-					$.each(data.result, function(i, ts) {
+			if (data.code == 0) {
+				if (data.data) {
+					$.each(data.data, function(i, ts) {
 						createRow(ts);
 					});
 				}
