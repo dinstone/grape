@@ -1,0 +1,123 @@
+version: "3.7"
+
+x-image:
+  &default-image
+    redis:latest
+
+networks:
+  redis-cluster-net:
+    name: redis-net
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+         - subnet: 172.27.0.0/16
+           gateway: 172.27.0.1
+
+services:
+  redis-node-1:
+    image: *default-image
+    container_name: redis-node-1
+    command:
+      [redis-server, "/etc/redis/redis.conf", --port, "7001", --cluster-announce-ip, "${ip}"]
+    volumes:
+      - ./redis.conf:/etc/redis/redis.conf
+    ports:
+      - 7001:7001
+      - 17001:17001
+    networks:
+      - redis-cluster-net
+        
+  redis-node-2:
+    image: *default-image
+    container_name: redis-node-2
+    command:
+      [redis-server, "/etc/redis/redis.conf", --port, "7002", --cluster-announce-ip, "${ip}"]
+    volumes:
+      - ./redis.conf:/etc/redis/redis.conf
+    ports:
+      - 7002:7002
+      - 17002:17002
+    networks:
+      - redis-cluster-net
+    depends_on:
+      - redis-node-1
+
+  redis-node-3:
+    image: *default-image
+    container_name: redis-node-3
+    command:
+      [redis-server, "/etc/redis/redis.conf", --port, "7003", --cluster-announce-ip, "${ip}"]
+    volumes:
+      - ./redis.conf:/etc/redis/redis.conf
+    ports:
+      - 7003:7003
+      - 17003:17003
+    networks:
+      - redis-cluster-net
+    depends_on:
+      - redis-node-2
+
+  redis-node-4:
+    image: *default-image
+    container_name: redis-node-4
+    command:
+      [redis-server, "/etc/redis/redis.conf", --port, "7004", --cluster-announce-ip, "${ip}"]
+    volumes:
+      - ./redis.conf:/etc/redis/redis.conf
+    ports:
+      - 7004:7004
+      - 17004:17004
+    networks:
+      - redis-cluster-net
+    depends_on:
+      - redis-node-3
+
+  redis-node-5:
+    image: *default-image
+    container_name: redis-node-5
+    command:
+      [redis-server, "/etc/redis/redis.conf", --port, "7005", --cluster-announce-ip, "${ip}"]
+    volumes:
+      - ./redis.conf:/etc/redis/redis.conf
+    ports:
+      - 7005:7005
+      - 17005:17005
+    networks:
+      - redis-cluster-net
+    depends_on:
+      - redis-node-4
+
+  redis-node-6:
+    image: *default-image
+    container_name: redis-node-6
+    command:
+      [redis-server, "/etc/redis/redis.conf", --port, "7006", --cluster-announce-ip, "${ip}"]
+    volumes:
+      - ./redis.conf:/etc/redis/redis.conf
+    ports:
+      - 7006:7006
+      - 17006:17006
+    networks:
+      - redis-cluster-net
+    depends_on:
+      - redis-node-5
+
+  cluster-init:
+    image: *default-image
+    container_name: cluster-init
+    entrypoint: [/bin/sh,-c,'echo "yes" | redis-cli --cluster-replicas 1 --cluster create ${ip}:7001 ${ip}:7002 ${ip}:7003 ${ip}:7004 ${ip}:7005 ${ip}:7006']
+    networks:
+      - redis-cluster-net
+    depends_on:
+      - redis-node-6
+
+  shell:
+    container_name: shell
+    image: busybox
+    stdin_open: true
+    tty: true
+    networks:
+      - redis-cluster-net
+    depends_on:
+      - cluster-init
