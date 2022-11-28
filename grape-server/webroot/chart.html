@@ -82,20 +82,6 @@
 					return data;
 				}())
 			}, {
-				name : 'Ready',
-				color : 'green',
-				data : (function() {
-					// generate an array of random data
-					var data = [], time = (new Date()).getTime(), i;
-					for (i = -19; i <= 0; i += 1) {
-						data.push({
-							x : time + i * 1000,
-							y : 0
-						});
-					}
-					return data;
-				}())
-			}, {
 				name : 'Retain',
 				color : 'blue',
 				data : (function() {
@@ -123,8 +109,7 @@
 			var x = stats.dateTime;
 			var series = chart.series;
 			series[0].addPoint([ x, stats.delayQueueSize ], true, true);
-			series[1].addPoint([ x, stats.readyQueueSize ], true, true);
-			series[2].addPoint([ x, stats.retainQueueSize ], true, true);
+			series[1].addPoint([ x, stats.retainQueueSize ], true, true);
 		}
 	}
 
@@ -162,7 +147,7 @@
 				});
 			}, 3000);
 		}
-		
+
 		// bind logout
 		$("#logout").click(function() {
 			$.getJSON("/api/authen/logout", function(data, status) {
@@ -181,10 +166,8 @@
 			<a class="navbar-brand" href="/"><img alt="Charisma Logo" src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
 			<!-- user dropdown starts -->
 			<div class="btn-group pull-right">
-				<button class="btn btn-default dropdown-toggle"
-					data-toggle="dropdown">
-					<i class="glyphicon glyphicon-user"></i><span
-						class="hidden-sm hidden-xs"> admin</span> <span class="caret"></span>
+				<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+					<i class="glyphicon glyphicon-user"></i><span class="hidden-sm hidden-xs"> admin</span> <span class="caret"></span>
 				</button>
 				<ul class="dropdown-menu">
 					<li><a href="#">Profile</a></li>

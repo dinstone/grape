@@ -42,6 +42,7 @@ public class BrokerTest {
         Broker broker = new Broker(jedisPool).start();
 
         String tubeName = "flow-test";
+        broker.createTube(tubeName);
 
         boolean b = broker.produce(tubeName, new Job("Job-0", 1000000, 30000, "first job".getBytes()));
         if (!b) {
@@ -57,10 +58,10 @@ public class BrokerTest {
         b = broker.produce(tubeName, new Job("Job-1", 1000, 30000, "1 job".getBytes()));
         b = broker.produce(tubeName, new Job("Job-2", 1000, 30000, "2 job".getBytes()));
         b = broker.produce(tubeName, new Job("Job-3", 1000, 30000, "3 job".getBytes()));
-        b = broker.produce(tubeName, new Job("Job-4", 1000, 3000, "4 job".getBytes()));
+        b = broker.produce(tubeName, new Job("Job-4", 3000, 3000, "4 job".getBytes()));
 
         try {
-            TimeUnit.SECONDS.sleep(3);
+            TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

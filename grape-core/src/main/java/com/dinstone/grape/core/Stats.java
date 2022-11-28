@@ -35,8 +35,6 @@ public class Stats implements Serializable {
 
     private long delayQueueSize;
 
-    private long readyQueueSize;
-
     private long retainQueueSize;
 
     private long failedQueueSize;
@@ -81,14 +79,6 @@ public class Stats implements Serializable {
         this.delayQueueSize = delayQueueSize;
     }
 
-    public long getReadyQueueSize() {
-        return readyQueueSize;
-    }
-
-    public void setReadyQueueSize(long readyQueueSize) {
-        this.readyQueueSize = readyQueueSize;
-    }
-
     public long getFailedQueueSize() {
         return failedQueueSize;
     }
@@ -108,8 +98,8 @@ public class Stats implements Serializable {
     @Override
     public String toString() {
         return "Stats [tubeName=" + tubeName + ", totalJobSize=" + totalJobSize + ", finishJobSize=" + finishJobSize
-                + ", delayQueueSize=" + delayQueueSize + ", readyQueueSize=" + readyQueueSize + ", retainQueueSize="
-                + retainQueueSize + ", failedQueueSize=" + failedQueueSize + "]";
+                + ", delayQueueSize=" + delayQueueSize + ", retainQueueSize=" + retainQueueSize + ", failedQueueSize="
+                + failedQueueSize + "]";
     }
 
 }

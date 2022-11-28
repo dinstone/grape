@@ -119,17 +119,17 @@ public class JobApiHandler extends RestApiHandler {
             return;
         }
 
-        long maxParam = 1;
+        int maxParam = 1;
         try {
             String param = ctx.request().getParam("max");
             if (param != null && param.length() > 0) {
-                maxParam = Long.parseLong(param);
+                maxParam = Integer.parseInt(param);
             }
         } catch (Exception e) {
             // ignore
         }
 
-        final long maxCount = maxParam;
+        final int maxCount = maxParam;
         ctx.vertx().executeBlocking(future -> {
             List<Job> jobs = broker.consume(tubeName, maxCount);
             future.complete(jobs);

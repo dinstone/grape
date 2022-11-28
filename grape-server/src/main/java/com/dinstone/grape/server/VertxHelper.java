@@ -33,7 +33,7 @@ public final class VertxHelper {
 
     public static Vertx createVertx(VertxOptions vertxOptions) throws Exception {
         CompletableFuture<Vertx> future = new CompletableFuture<>();
-        if (vertxOptions.getEventBusOptions().isClustered()) {
+        if (vertxOptions.getClusterManager() != null) {
             Vertx.clusteredVertx(vertxOptions, asyncResult -> {
                 if (asyncResult.succeeded()) {
                     future.complete(asyncResult.result());

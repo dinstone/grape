@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +42,12 @@ public class Broker {
     private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
 
     private static final String THREAD_PREFIX = "broker-schedule-thread-";
+
+    private static final String TUBENAME_REGEX = "^([a-z]|[A-Z])(\\w|-)*";
+
+    private static final int TUBENAME_LENGTH = 64;
+
+    private static final int DEFAULT_TTR = 1000;
 
     private final String group;
 
@@ -113,10 +120,18 @@ public class Broker {
             return createTube(tubeName);
         }
 
-        throw new BusinessException(TubeErrorCode.UNKOWN, "unkown tube '" + tubeName + "'");
+        throw new BusinessException(TubeErrorCode.UNKOWN, "unkown tube name '" + tubeName + "'");
     }
 
     public Tube createTube(String tubeName) {
+        Pattern p = Pattern.compile(TUBENAME_REGEX);
+        if (!p.matcher(tubeName).matches()) {
+            throw new BusinessException(TubeErrorCode.INVALID, "tube name not match " + TUBENAME_REGEX);
+        }
+        if (tubeName.length() > TUBENAME_LENGTH) {
+            throw new BusinessException(TubeErrorCode.GREATE, "tube name length greate than " + TUBENAME_LENGTH);
+        }
+
         Tube tube = tubeMap.get(tubeName);
         if (tube == null) {
             addTube(tubeName);
@@ -139,12 +154,41 @@ public class Broker {
         }
     }
 
+    public void deleteTube(String tubeName) {
+        Tube tube = tubeMap.remove(tubeName);
+        if (tube == null) {
+            Set<String> tubeSet = tubeSet();
+            if (tubeSet.contains(tubeName)) {
+                tube = new Tube(group, tubeName, jedisPool);
+            }
+        }
+
+        // remove tube
+        removeTube(tubeName);
+
+        // destroy tube
+        if (tube != null) {
+            tube.destroy();
+        }
+    }
+
+    private void removeTube(String tubeName) {
+        Jedis jedis = jedisPool.getResource();
+        try {
+            jedis.srem(tubeSetKey, tubeName);
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+    }
+
     public boolean produce(String tubeName, Job job) {
         if (tubeName == null || tubeName.length() == 0) {
             throw new BusinessException(TubeErrorCode.EMPTY, "tubeName is empty");
         }
-        if (job.getTtr() < 1000) {
-            job.setTtr(1000);
+        if (job.getTtr() < DEFAULT_TTR) {
+            job.setTtr(DEFAULT_TTR);
         }
         return loadTube(tubeName).produce(job);
     }
@@ -154,12 +198,12 @@ public class Broker {
     }
 
     @SuppressWarnings("unchecked")
-    public List<Job> consume(String tubeName, long max) {
+    public List<Job> consume(String tubeName, int max) {
+        Tube tube = loadTube(tubeName);
+
         if (max < 1) {
             max = 1;
         }
-
-        Tube tube = loadTube(tubeName);
 
         RedisLock consumeLock = new RedisLock(jedisPool, consumeLockPrefix + tubeName, 30);
         if (consumeLock.acquire()) {
@@ -195,6 +239,7 @@ public class Broker {
      * @param tubeName
      * @param jobId
      * @param dtr
+     * 
      * @return
      */
     public boolean release(String tubeName, String jobId, long dtr) {

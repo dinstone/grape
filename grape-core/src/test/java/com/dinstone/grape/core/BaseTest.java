@@ -15,9 +15,22 @@
  */
 package com.dinstone.grape.core;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class BaseTest {
 
     public static void main(String[] args) {
+        String f = "^([a-z]|[A-Z])(\\w|-)*";
+        Pattern p = Pattern.compile(f);
+        String s = "tust_name";
+        Matcher m = p.matcher(s);
+        if (m.matches()) {
+            System.out.println("match");
+        } else {
+            System.out.println("no match");
+        }
+
         testExecuteTime();
     }
 

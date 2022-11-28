@@ -21,9 +21,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.dinstone.grape.core.Broker;
-import com.dinstone.grape.core.Job;
-
 import redis.clients.jedis.JedisPool;
 
 public class ProducerTest {
@@ -34,6 +31,7 @@ public class ProducerTest {
     public void test() throws IOException {
         JedisPool jedisPool = new JedisPool("127.0.0.1", 6379);
         Broker tubeManager = new Broker(jedisPool);
+        tubeManager.createTube("test");
 
         LOG.info("produce job for test,bt01,bt02");
         for (int i = 0; i < 10000; i++) {

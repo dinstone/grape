@@ -99,6 +99,7 @@ $(document).ready(
 						break;
 					}
 					alert(msg);
+					window.location.href = "/index.html";
 				}
 			});
 

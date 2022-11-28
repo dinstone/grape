@@ -57,6 +57,27 @@ public class TubeApiHandler extends RestApiHandler {
             }
         });
     }
+    
+    @Post("/delete")
+    public void delete(@Context RoutingContext ctx) {
+        String tubeName = ctx.request().getParam("tube");
+        if (tubeName == null || tubeName.length() == 0) {
+            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+            return;
+        }
+
+        ctx.vertx().executeBlocking(future -> {
+            broker.deleteTube(tubeName);
+            future.complete(true);
+        }, false, ar -> {
+            if (ar.succeeded()) {
+                success(ctx, ar.result());
+            } else {
+                failed(ctx, ar.cause());
+            }
+        });
+    }
+
 
     @Get("/set")
     public void set(@Context RoutingContext ctx) {
