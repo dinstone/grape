@@ -32,7 +32,7 @@ import com.dinstone.grape.exception.ApplicationException;
 import com.dinstone.grape.exception.BusinessException;
 import com.dinstone.grape.exception.TubeErrorCode;
 import com.dinstone.grape.util.NamedThreadFactory;
-import com.dinstone.grape.util.RedisLock;
+import com.dinstone.grape.util.RedisPermitLock;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -115,12 +115,23 @@ public class Broker {
         if (tube != null) {
             return tube;
         }
-        Set<String> tubeSet = tubeSet();
-        if (tubeSet.contains(tubeName)) {
+
+        if (contains(tubeName)) {
             return createTube(tubeName);
         }
 
         throw new BusinessException(TubeErrorCode.UNKOWN, "unkown tube name '" + tubeName + "'");
+    }
+
+    private boolean contains(String tubeName) {
+        Jedis jedis = jedisPool.getResource();
+        try {
+            return jedis.sismember(tubeSetKey, tubeName);
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
     }
 
     public Tube createTube(String tubeName) {
@@ -157,8 +168,7 @@ public class Broker {
     public void deleteTube(String tubeName) {
         Tube tube = tubeMap.remove(tubeName);
         if (tube == null) {
-            Set<String> tubeSet = tubeSet();
-            if (tubeSet.contains(tubeName)) {
+            if (contains(tubeName)) {
                 tube = new Tube(group, tubeName, jedisPool);
             }
         }
@@ -205,7 +215,7 @@ public class Broker {
             max = 1;
         }
 
-        RedisLock consumeLock = new RedisLock(jedisPool, consumeLockPrefix + tubeName, 30);
+        RedisPermitLock consumeLock = new RedisPermitLock(jedisPool, consumeLockPrefix + tubeName, 30);
         if (consumeLock.acquire()) {
             try {
                 return tube.consume(max);
@@ -290,11 +300,11 @@ public class Broker {
 
     private final class ScheduledTask implements Runnable {
         private final Tube tube;
-        private final RedisLock lock;
+        private final RedisPermitLock lock;
 
         private ScheduledTask(Tube tube) {
             this.tube = tube;
-            this.lock = new RedisLock(jedisPool, scheduleLockPrefix + tube.name(), 30);
+            this.lock = new RedisPermitLock(jedisPool, scheduleLockPrefix + tube.name(), 30);
         }
 
         @Override

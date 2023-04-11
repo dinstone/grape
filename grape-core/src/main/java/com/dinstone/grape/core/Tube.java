@@ -47,8 +47,10 @@ public class Tube {
 
     private static final String JOB_DATA = "data";
 
+    /** Finish Job Size */
     private static final String STATS_FJS = "fjs";
 
+    /** Total Job Size */
     private static final String STATS_TJS = "tjs";
 
     private final JedisPool jedisPool;
@@ -310,8 +312,6 @@ public class Tube {
                     // delete from delay queue
                     jedis.zrem(delayQueue, jobId);
                 } else {
-                    jedis.hincrBy(jobPrefix + jobId, JOB_NOE, 1);
-
                     Job job = null;
                     try {
                         job = map2Job(jobMap);
@@ -323,9 +323,12 @@ public class Tube {
                         continue;
                     }
 
+                    // remove job to retain queue from delay queue
                     double score = System.currentTimeMillis() + job.getTtr();
                     jedis.zadd(retainQueue, score, jobId);
                     jedis.zrem(delayQueue, jobId);
+                    // update the job's number of execution
+                    jedis.hincrBy(jobPrefix + jobId, JOB_NOE, 1);
 
                     jobs.add(job);
                 }

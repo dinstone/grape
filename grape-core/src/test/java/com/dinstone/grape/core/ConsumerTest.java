@@ -33,7 +33,7 @@ public class ConsumerTest {
 
         private final AtomicBoolean closed = new AtomicBoolean(false);
 
-        private Broker tubeManager;
+        private Broker broker;
 
         private String tubeName;
 
@@ -42,7 +42,7 @@ public class ConsumerTest {
         public Consumer(int index, String tubeName, Broker tubeManager) {
             this.index = index;
             this.tubeName = tubeName;
-            this.tubeManager = tubeManager;
+            this.broker = tubeManager;
 
             setName("Consumer-" + index);
         }
@@ -54,7 +54,7 @@ public class ConsumerTest {
         @Override
         public void run() {
             while (!closed.get()) {
-                List<Job> jobs = tubeManager.consume(tubeName, 50);
+                List<Job> jobs = broker.consume(tubeName, 50);
                 if (jobs == null || jobs.size() == 0) {
                     try {
                         Thread.sleep(500);
@@ -65,7 +65,7 @@ public class ConsumerTest {
                 }
 
                 for (Job job : jobs) {
-                    tubeManager.finish(tubeName, job.getId());
+                    broker.finish(tubeName, job.getId());
                     LOG.info("consumer:{} handle job[{}:{}]", index, tubeName, job.getId());
                 }
             }
@@ -74,24 +74,12 @@ public class ConsumerTest {
     }
 
     public static void main(String[] args) {
-        JedisPool jedisPool = new JedisPool("127.0.0.1", 6379);
+        JedisPool jedisPool = new JedisPool("192.168.1.120", 6379);
         Broker tubeManager = new Broker(jedisPool);
 
         List<Consumer> consumers = new ArrayList<>(3);
         for (int i = 0; i < 3; i++) {
             Consumer target = new Consumer(i, "test", tubeManager);
-            target.start();
-            consumers.add(target);
-        }
-
-        for (int i = 0; i < 2; i++) {
-            Consumer target = new Consumer(i, "bt01", tubeManager);
-            target.start();
-            consumers.add(target);
-        }
-
-        for (int i = 0; i < 1; i++) {
-            Consumer target = new Consumer(i, "bt02", tubeManager);
             target.start();
             consumers.add(target);
         }

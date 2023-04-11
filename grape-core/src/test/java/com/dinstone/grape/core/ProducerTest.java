@@ -29,16 +29,19 @@ public class ProducerTest {
 
     @Test
     public void test() throws IOException {
-        JedisPool jedisPool = new JedisPool("127.0.0.1", 6379);
+        JedisPool jedisPool = new JedisPool("192.168.1.120", 6379);
         Broker tubeManager = new Broker(jedisPool);
         tubeManager.createTube("test");
 
-        LOG.info("produce job for test,bt01,bt02");
+        long s = System.currentTimeMillis();
+        LOG.info("produce job for test start");
         for (int i = 0; i < 10000; i++) {
             int dtr = ((i / 100) + 3) * 1000;
-            System.out.println("dtr = " + dtr);
+            // System.out.println("dtr = " + dtr);
             tubeManager.produce("test", new Job("Job-" + i, dtr, 30000, "hello,haha".getBytes()));
         }
+        long e = System.currentTimeMillis();
+        LOG.info("produce job for test finish, take's {}ms", (e - s));
 
         jedisPool.destroy();
     }
