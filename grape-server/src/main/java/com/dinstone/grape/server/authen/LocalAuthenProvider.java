@@ -1,24 +1,38 @@
+/*
+ * Copyright (C) 2016~2023 dinstone<dinstone@163.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.dinstone.grape.server.authen;
 
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.User;
 
 public class LocalAuthenProvider implements AuthenProvider {
 
-    private JsonObject users;
+	private JsonObject users;
 
-    public LocalAuthenProvider(JsonObject users) {
-        this.users = users;
-    }
+	public LocalAuthenProvider(JsonObject users) {
+		this.users = users;
+	}
 
-    @Override
-    public AuthenUser authenticate(String un, String pw) {
-        JsonObject userAttr = users.getJsonObject(un);
-        if (userAttr != null && pw.equals(userAttr.getString("password"))) {
-            AuthenUser user = new AuthenUser(un, pw);
-            user.setPrincipal(userAttr);
-            return user;
-        }
-        return null;
-    }
+	@Override
+	public User authenticate(String un, String pw) {
+		JsonObject userAttr = users.getJsonObject(un);
+		if (userAttr != null && pw.equals(userAttr.getString("password"))) {
+			return User.fromName(un);
+		}
+		return null;
+	}
 
 }

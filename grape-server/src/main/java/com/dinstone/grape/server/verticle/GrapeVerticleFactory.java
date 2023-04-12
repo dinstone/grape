@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016~2019 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2023 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,37 +15,46 @@
  */
 package com.dinstone.grape.server.verticle;
 
+import java.util.concurrent.Callable;
+
 import com.dinstone.grape.server.ApplicationContext;
 
+import io.vertx.core.Promise;
 import io.vertx.core.Verticle;
 import io.vertx.core.spi.VerticleFactory;
 
 public class GrapeVerticleFactory implements VerticleFactory {
 
-    private ApplicationContext context;
+	private ApplicationContext context;
 
-    public GrapeVerticleFactory(ApplicationContext context) {
-        this.context = context;
-    }
+	public GrapeVerticleFactory(ApplicationContext context) {
+		this.context = context;
+	}
 
-    @Override
-    public String prefix() {
-        return "grape";
-    }
+	@Override
+	public String prefix() {
+		return "grape";
+	}
 
-    @Override
-    public Verticle createVerticle(String verticleName, ClassLoader classLoader) throws Exception {
-        String clazz = VerticleFactory.removePrefix(verticleName);
-        if (WebRestVerticle.class.getName().equals(clazz)) {
-            return new WebRestVerticle(context);
-        } else if (WebHttpVerticle.class.getName().equals(clazz)) {
-            return new WebHttpVerticle(context);
-        }
-        throw new IllegalArgumentException("unsupported verticle type: " + clazz);
-    }
+	public String getVerticleName(Class<?> verticleClass) {
+		return prefix() + ":" + verticleClass.getName();
+	}
 
-    public String getVerticleName(Class<?> verticleClass) {
-        return prefix() + ":" + verticleClass.getName();
-    }
+	@Override
+	public void createVerticle(String verticleName, ClassLoader classLoader, Promise<Callable<Verticle>> promise) {
+		promise.complete(new Callable<Verticle>() {
+
+			@Override
+			public Verticle call() throws Exception {
+				String clazz = VerticleFactory.removePrefix(verticleName);
+				if (WebRestVerticle.class.getName().equals(clazz)) {
+					return new WebRestVerticle(context);
+				} else if (WebHttpVerticle.class.getName().equals(clazz)) {
+					return new WebHttpVerticle(context);
+				}
+				throw new IllegalArgumentException("unsupported verticle type: " + clazz);
+			}
+		});
+	}
 
 }

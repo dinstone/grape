@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016~2019 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2023 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,97 +34,96 @@ import io.vertx.ext.web.RoutingContext;
 @Produces({ "application/json" })
 public class TubeApiHandler extends RestApiHandler {
 
-    public TubeApiHandler(@Context ApplicationContext context) {
-        super(context);
-    }
+	public TubeApiHandler(@Context ApplicationContext context) {
+		super(context);
+	}
 
-    @Post("/create")
-    public void create(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+	@Post("/create")
+	public void create(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-        ctx.vertx().executeBlocking(future -> {
-            broker.createTube(tubeName);
-            future.complete(true);
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
-    
-    @Post("/delete")
-    public void delete(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+		ctx.vertx().executeBlocking(future -> {
+			broker.createTube(tubeName);
+			future.complete(true);
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-        ctx.vertx().executeBlocking(future -> {
-            broker.deleteTube(tubeName);
-            future.complete(true);
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+	@Post("/delete")
+	public void delete(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
+		ctx.vertx().executeBlocking(future -> {
+			broker.deleteTube(tubeName);
+			future.complete(true);
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-    @Get("/set")
-    public void set(@Context RoutingContext ctx) {
-        ctx.vertx().executeBlocking(future -> {
-            future.complete(broker.tubeSet());
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+	@Get("/set")
+	public void set(@Context RoutingContext ctx) {
+		ctx.vertx().executeBlocking(future -> {
+			future.complete(broker.tubeSet());
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-    @Get("/stats")
-    public void stats(@Context RoutingContext ctx) {
-        ctx.vertx().executeBlocking(future -> {
-            List<Stats> stats = new ArrayList<>();
-            Set<String> tubes = broker.tubeSet();
-            for (String tubeName : tubes) {
-                stats.add(broker.stats(tubeName));
-            }
-            future.complete(stats);
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+	@Get("/stats")
+	public void stats(@Context RoutingContext ctx) {
+		ctx.vertx().executeBlocking(future -> {
+			List<Stats> stats = new ArrayList<>();
+			Set<String> tubes = broker.tubeSet();
+			for (String tubeName : tubes) {
+				stats.add(broker.stats(tubeName));
+			}
+			future.complete(stats);
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-    @Get("/stats/:tubeName")
-    public void stats(@Context RoutingContext ctx, @PathParam("tubeName") String tubeName) {
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
-        ctx.vertx().executeBlocking(future -> {
-            future.complete(broker.stats(tubeName));
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+	@Get("/stats/:tubeName")
+	public void stats(@Context RoutingContext ctx, @PathParam("tubeName") String tubeName) {
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
+		ctx.vertx().executeBlocking(future -> {
+			future.complete(broker.stats(tubeName));
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
 }

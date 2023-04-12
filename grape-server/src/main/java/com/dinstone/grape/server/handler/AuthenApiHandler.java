@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016~2019 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2023 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package com.dinstone.grape.server.handler;
 
 import com.dinstone.grape.server.ApplicationContext;
 import com.dinstone.grape.server.authen.AuthenProvider;
-import com.dinstone.grape.server.authen.AuthenUser;
 import com.dinstone.vertx.web.annotation.Context;
 import com.dinstone.vertx.web.annotation.Get;
 import com.dinstone.vertx.web.annotation.Post;
@@ -25,6 +24,7 @@ import com.dinstone.vertx.web.annotation.Produces;
 import com.dinstone.vertx.web.annotation.WebHandler;
 
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.User;
 import io.vertx.ext.web.RoutingContext;
 
 @WebHandler("/authen")
@@ -52,7 +52,7 @@ public class AuthenApiHandler extends RestApiHandler {
             return;
         }
 
-        AuthenUser user = authenProvider.authenticate(un, pw);
+        User user = authenProvider.authenticate(un, pw);
         if (user != null) {
             ctx.session().put("user", user);
             success(ctx, ctx.session().id());

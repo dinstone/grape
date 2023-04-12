@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016~2019 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2023 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import com.dinstone.grape.server.handler.AccessLogHandler;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.WorkerExecutor;
@@ -75,7 +76,7 @@ public class HttpServerTest {
                 HttpServerRequest request = rc.request();
                 LOG.info("request = {}, {}", request.path(), request.remoteAddress());
 
-                Handler<Future<Object>> blockingHandler = f -> {
+                Handler<Promise<Object>> blockingHandler = f -> {
                     LOG.info("handle = {}, {}", request.path(), request.remoteAddress());
                     f.complete();
 
