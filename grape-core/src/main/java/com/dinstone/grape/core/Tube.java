@@ -18,6 +18,7 @@ package com.dinstone.grape.core;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,543 +28,480 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.dinstone.grape.exception.ApplicationException;
-
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import com.dinstone.grape.redis.RedisClient;
+import com.dinstone.grape.redis.RedisLock;
 
 public class Tube {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Tube.class);
+	private static final Logger LOG = LoggerFactory.getLogger(Tube.class);
 
-    private static final String UTF_8 = "utf-8";
+	private static final String UTF_8 = "utf-8";
 
-    private static final String JOB_ID = "id";
+	private static final String JOB_ID = "id";
 
-    private static final String JOB_NOE = "noe";
+	private static final String JOB_NOE = "noe";
 
-    private static final String JOB_TTR = "ttr";
+	private static final String JOB_TTR = "ttr";
 
-    private static final String JOB_DTR = "dtr";
+	private static final String JOB_DTR = "dtr";
 
-    private static final String JOB_DATA = "data";
+	private static final String JOB_DATA = "data";
 
-    /** Finish Job Size */
-    private static final String STATS_FJS = "fjs";
+	/** Finish Job Size */
+	private static final String STATS_FJS = "fjs";
 
-    /** Total Job Size */
-    private static final String STATS_TJS = "tjs";
+	/** Total Job Size */
+	private static final String STATS_TJS = "tjs";
 
-    private final JedisPool jedisPool;
+	private final RedisClient redisClient;
 
-    private final String tubeName;
+	private final String tubeName;
 
-    /**
-     * tube stats type : hashmap
-     */
-    private final String tubeStats;
+	/**
+	 * tube stats type : hashmap
+	 */
+	private final String tubeStats;
 
-    /**
-     * job type : hashmap
-     */
-    private final String jobPrefix;
+	/**
+	 * job type : hashmap
+	 */
+	private final String jobPrefix;
 
-    /**
-     * delay queue type : zset
-     */
-    private final String delayQueue;
+	/**
+	 * delay queue type : zset
+	 */
+	private final String delayQueue;
 
-    /**
-     * retain queue type : zset
-     */
-    private final String retainQueue;
+	/**
+	 * retain queue type : zset
+	 */
+	private final String retainQueue;
 
-    /**
-     * failed queue type : zset
-     */
-    private final String failedQueue;
+	/**
+	 * failed queue type : zset
+	 */
+	private final String failedQueue;
 
-    public Tube(String group, String tubeName, JedisPool jedisPool) {
-        this.jedisPool = jedisPool;
-        this.tubeName = tubeName;
+	private final RedisLock consumeLock;
 
-        String tubePrefix;
-        if (group != null && !group.isEmpty()) {
-            tubePrefix = group + ":tube:";
-        } else {
-            tubePrefix = "tube:";
-        }
+	private final RedisLock scheduleLock;
 
-        this.jobPrefix = tubePrefix + tubeName + ":job:";
-        this.tubeStats = tubePrefix + tubeName + ":stats";
+	public Tube(String group, String tubeName, RedisClient redisClient) {
+		this.redisClient = redisClient;
+		this.tubeName = tubeName;
 
-        this.delayQueue = tubePrefix + tubeName + ":queue:delay";
-        this.retainQueue = tubePrefix + tubeName + ":queue:retain";
-        this.failedQueue = tubePrefix + tubeName + ":queue:failed";
-    }
+		String tubePrefix;
+		if (group != null && !group.isEmpty()) {
+			tubePrefix = group + ":tube:";
+		} else {
+			tubePrefix = "tube:";
+		}
 
-    /**
-     * tube's name
-     * 
-     * @return
-     */
-    public String name() {
-        return tubeName;
-    }
+		this.jobPrefix = tubePrefix + tubeName + ":job:";
+		this.tubeStats = tubePrefix + tubeName + ":stats";
 
-    /**
-     * tube's stats info
-     * 
-     * @return
-     */
-    public Stats stats() {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            Stats stats = new Stats();
-            stats.setTubeName(tubeName);
+		this.delayQueue = tubePrefix + tubeName + ":queue:delay";
+		this.retainQueue = tubePrefix + tubeName + ":queue:retain";
+		this.failedQueue = tubePrefix + tubeName + ":queue:failed";
 
-            stats.setDelayQueueSize(jedis.zcard(delayQueue));
-            stats.setRetainQueueSize(jedis.zcard(retainQueue));
-            stats.setFailedQueueSize(jedis.zcard(failedQueue));
+		String consumeLockKey = tubePrefix + tubeName + ":lock:consume";
+		this.consumeLock = new RedisLock(redisClient, consumeLockKey, 30);
+		String scheduleLockKey = tubePrefix + tubeName + ":lock:schedule";
+		this.scheduleLock = new RedisLock(redisClient, scheduleLockKey, 30);
+	}
 
-            Map<String, String> tsMap = jedis.hgetAll(tubeStats);
-            String tjs = tsMap.get(STATS_TJS);
-            if (tjs != null) {
-                stats.setTotalJobSize(Long.parseLong(tjs));
-            }
-            String fjs = tsMap.get(STATS_FJS);
-            if (fjs != null) {
-                stats.setFinishJobSize(Long.parseLong(fjs));
-            }
+	/**
+	 * tube's name
+	 * 
+	 * @return
+	 */
+	public String name() {
+		return tubeName;
+	}
 
-            return stats;
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-    }
+	/**
+	 * tube's stats info
+	 * 
+	 * @return
+	 */
+	public Stats stats() {
+		Stats stats = new Stats();
+		stats.setTubeName(tubeName);
 
-    public void destroy() {
+		stats.setDelayQueueSize(redisClient.zcard(delayQueue));
+		stats.setRetainQueueSize(redisClient.zcard(retainQueue));
+		stats.setFailedQueueSize(redisClient.zcard(failedQueue));
 
-        Jedis jedis = jedisPool.getResource();
-        try {
-            for (;;) {
-                Set<String> js = jedis.zrange(failedQueue, 0, 100);
-                if (js != null && js.size() > 0) {
-                    for (String j : js) {
-                        jedis.zrem(failedQueue, j);
-                        jedis.del(jobPrefix + j);
-                    }
-                } else {
-                    break;
-                }
-            }
-            for (;;) {
-                Set<String> js = jedis.zrange(retainQueue, 0, 100);
-                if (js != null && js.size() > 0) {
-                    for (String j : js) {
-                        jedis.zrem(retainQueue, j);
-                        jedis.del(jobPrefix + j);
-                    }
-                } else {
-                    break;
-                }
-            }
-            for (;;) {
-                Set<String> js = jedis.zrange(delayQueue, 0, 100);
-                if (js != null && js.size() > 0) {
-                    for (String j : js) {
-                        jedis.zrem(delayQueue, j);
-                        jedis.del(jobPrefix + j);
-                    }
-                } else {
-                    break;
-                }
-            }
+		Map<String, String> tsMap = redisClient.hgetAll(tubeStats);
+		String tjs = tsMap.get(STATS_TJS);
+		if (tjs != null) {
+			stats.setTotalJobSize(Long.parseLong(tjs));
+		}
+		String fjs = tsMap.get(STATS_FJS);
+		if (fjs != null) {
+			stats.setFinishJobSize(Long.parseLong(fjs));
+		}
 
-            jedis.del(tubeStats);
-            jedis.del(delayQueue);
-            jedis.del(retainQueue);
-            jedis.del(failedQueue);
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
+		return stats;
+	}
 
-    }
+	public void destroy() {
+		for (;;) {
+			Set<String> js = redisClient.zrange(failedQueue, 0, 100);
+			if (js != null && js.size() > 0) {
+				for (String j : js) {
+					redisClient.zrem(failedQueue, j);
+					redisClient.del(jobPrefix + j);
+				}
+			} else {
+				break;
+			}
+		}
+		for (;;) {
+			Set<String> js = redisClient.zrange(retainQueue, 0, 100);
+			if (js != null && js.size() > 0) {
+				for (String j : js) {
+					redisClient.zrem(retainQueue, j);
+					redisClient.del(jobPrefix + j);
+				}
+			} else {
+				break;
+			}
+		}
+		for (;;) {
+			Set<String> js = redisClient.zrange(delayQueue, 0, 100);
+			if (js != null && js.size() > 0) {
+				for (String j : js) {
+					redisClient.zrem(delayQueue, j);
+					redisClient.del(jobPrefix + j);
+				}
+			} else {
+				break;
+			}
+		}
 
-    /**
-     * schedule job to ready queue
-     */
-    public void schedule() {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            retainToReady(jedis);
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-    }
+		redisClient.del(tubeStats);
+		redisClient.del(delayQueue);
+		redisClient.del(retainQueue);
+		redisClient.del(failedQueue);
 
-    private void retainToReady(Jedis jedis) {
-        long expireTime = System.currentTimeMillis() + 10000;
-        boolean stop = false;
-        while (!stop) {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime > expireTime) {
-                break;
-            }
+	}
 
-            String maxScore = "" + currentTime;
-            Set<String> jobSet = jedis.zrangeByScore(retainQueue, "-inf", maxScore, 0, 100);
-            if (jobSet == null || jobSet.size() == 0) {
-                break;
-            }
+	/**
+	 * schedule job to ready queue
+	 */
+	public void schedule() {
+		if (scheduleLock.acquire()) {
+			try {
+				retainToReady();
+			} finally {
+				scheduleLock.release();
+			}
+		}
+	}
 
-            for (String jobId : jobSet) {
-                String dtr = jedis.hget(jobPrefix + jobId, JOB_DTR);
-                if (dtr == null) {
-                    LOG.warn("job[{}:{}] is invalid, remove from retain queue.", tubeName, jobId);
-                    jedis.zrem(retainQueue, jobId);
-                    continue;
-                }
+	private void retainToReady() {
+		long expireTime = System.currentTimeMillis() + 10000;
+		boolean stop = false;
+		while (!stop) {
+			long currentTime = System.currentTimeMillis();
+			if (currentTime > expireTime) {
+				break;
+			}
 
-                jedis.zadd(delayQueue, currentTime, jobId);
-                jedis.zrem(retainQueue, jobId);
-            }
-        }
-    }
+			String maxScore = "" + currentTime;
+			Set<String> jobSet = redisClient.zrangeByScore(retainQueue, "-inf", maxScore, 0, 100);
+			if (jobSet == null || jobSet.size() == 0) {
+				break;
+			}
 
-    /**
-     * add a job to tube's delay queue.
-     * 
-     * @param job
-     * 
-     * @return
-     */
-    public boolean produce(Job job) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            if (jedis.zscore(delayQueue, job.getId()) == null) {
-                Map<String, String> hashJob = job2Map(job);
-                jedis.hmset(jobPrefix + job.getId(), hashJob);
+			for (String jobId : jobSet) {
+				String dtr = redisClient.hget(jobPrefix + jobId, JOB_DTR);
+				if (dtr == null) {
+					LOG.warn("job[{}:{}] is invalid, remove from retain queue.", tubeName, jobId);
+					redisClient.zrem(retainQueue, jobId);
+					continue;
+				}
 
-                double score = System.currentTimeMillis() + job.getDtr();
-                long uc = jedis.zadd(delayQueue, score, job.getId());
-                if (uc > 0) {
-                    jedis.hincrBy(tubeStats, STATS_TJS, 1);
-                    return true;
-                }
-            }
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
+				redisClient.zadd(delayQueue, currentTime, jobId);
+				redisClient.zrem(retainQueue, jobId);
+			}
+		}
+	}
 
-        return false;
-    }
+	/**
+	 * add a job to tube's delay queue.
+	 * 
+	 * @param job
+	 * 
+	 * @return
+	 */
+	public boolean produce(Job job) {
+		if (redisClient.zscore(delayQueue, job.getId()) == null) {
+			Map<String, String> hashJob = job2Map(job);
+			redisClient.hmset(jobPrefix + job.getId(), hashJob);
 
-    /**
-     * the job is success, delete job from tube's delay queue.
-     * 
-     * @param jobId
-     * 
-     * @return
-     */
-    public boolean delete(String jobId) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            // delete from delay queue
-            if (jedis.zrem(delayQueue, jobId) > 0) {
-                jedis.del(jobPrefix + jobId);
-                jedis.hincrBy(tubeStats, STATS_FJS, 1);
-                return true;
-            }
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
+			double score = System.currentTimeMillis() + job.getDtr();
+			long uc = redisClient.zadd(delayQueue, score, job.getId());
+			if (uc > 0) {
+				redisClient.hincrBy(tubeStats, STATS_TJS, 1);
+				return true;
+			}
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    /**
-     * consume some jobs.
-     * 
-     * @param max
-     *            maximum consumption per time
-     * 
-     * @return
-     */
-    public List<Job> consume(int max) {
-        List<Job> jobs = new ArrayList<>();
-        Jedis jedis = jedisPool.getResource();
-        try {
-            String maxScore = "" + System.currentTimeMillis();
-            Set<String> jobSet = jedis.zrangeByScore(delayQueue, "-inf", maxScore, 0, max);
-            for (String jobId : jobSet) {
-                Map<String, String> jobMap = jedis.hgetAll(jobPrefix + jobId);
-                if (jobMap == null || jobMap.get(JOB_ID) == null) {
-                    LOG.warn("job[{}:{}] is invalid, remove from ready queue.", tubeName, jobId);
-                    // delete from delay queue
-                    jedis.zrem(delayQueue, jobId);
-                } else {
-                    Job job = null;
-                    try {
-                        job = map2Job(jobMap);
-                    } catch (Exception e) {
-                        LOG.warn("job[{}:{}] is invalid, remove to failure queue.", tubeName, jobId);
-                        jedis.zadd(failedQueue, System.currentTimeMillis(), jobId);
-                        jedis.zrem(delayQueue, jobId);
+	/**
+	 * the job is success, delete job from tube's delay queue.
+	 * 
+	 * @param jobId
+	 * 
+	 * @return
+	 */
+	public boolean delete(String jobId) {
+		// delete from delay queue
+		if (redisClient.zrem(delayQueue, jobId) > 0) {
+			redisClient.del(jobPrefix + jobId);
+			redisClient.hincrBy(tubeStats, STATS_FJS, 1);
+			return true;
+		}
 
-                        continue;
-                    }
+		return false;
+	}
 
-                    // remove job to retain queue from delay queue
-                    double score = System.currentTimeMillis() + job.getTtr();
-                    jedis.zadd(retainQueue, score, jobId);
-                    jedis.zrem(delayQueue, jobId);
-                    // update the job's number of execution
-                    jedis.hincrBy(jobPrefix + jobId, JOB_NOE, 1);
+	/**
+	 * consume some jobs.
+	 * 
+	 * @param max maximum consumption per time
+	 * 
+	 * @return
+	 */
+	public List<Job> consume(int max) {
+		if (consumeLock.acquire()) {
+			List<Job> jobs = new ArrayList<>();
+			try {
+				String maxScore = "" + System.currentTimeMillis();
+				Set<String> jobSet = redisClient.zrangeByScore(delayQueue, "-inf", maxScore, 0, max);
+				for (String jobId : jobSet) {
+					Map<String, String> jobMap = redisClient.hgetAll(jobPrefix + jobId);
+					if (jobMap == null || jobMap.get(JOB_ID) == null) {
+						LOG.warn("job[{}:{}] is invalid, remove from ready queue.", tubeName, jobId);
+						// delete from delay queue
+						redisClient.zrem(delayQueue, jobId);
+					} else {
+						Job job = null;
+						try {
+							job = map2Job(jobMap);
+						} catch (Exception e) {
+							LOG.warn("job[{}:{}] is invalid, remove to failure queue.", tubeName, jobId);
+							redisClient.zadd(failedQueue, System.currentTimeMillis(), jobId);
+							redisClient.zrem(delayQueue, jobId);
 
-                    jobs.add(job);
-                }
-            }
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-        return jobs;
-    }
+							continue;
+						}
 
-    /**
-     * release a job to delay queue from retain queue.
-     * 
-     * @param jobId
-     * @param dtr
-     * 
-     * @return
-     */
-    public boolean release(String jobId, long dtr) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            if (jedis.zscore(retainQueue, jobId) == null) {
-                return false;
-            }
+						// remove job to retain queue from delay queue
+						double score = System.currentTimeMillis() + job.getTtr();
+						redisClient.zadd(retainQueue, score, jobId);
+						redisClient.zrem(delayQueue, jobId);
+						// update the job's number of execution
+						redisClient.hincrBy(jobPrefix + jobId, JOB_NOE, 1);
 
-            if (jedis.exists(jobPrefix + jobId)) {
-                jedis.hset(jobPrefix + jobId, JOB_DTR, Long.toString(dtr));
-                double score = System.currentTimeMillis() + dtr;
-                jedis.zadd(delayQueue, score, jobId);
-                jedis.zrem(retainQueue, jobId);
-                return true;
-            }
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
+						jobs.add(job);
+					}
+				}
+			} finally {
+				consumeLock.release();
+			}
+			return jobs;
+		}
 
-        return false;
-    }
+		return Collections.emptyList();
+	}
 
-    /**
-     * the job is success, finish the job.
-     * 
-     * @param jobId
-     * 
-     * @return
-     */
-    public boolean finish(String jobId) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            if (jedis.zrem(retainQueue, jobId) > 0) {
-                jedis.del(jobPrefix + jobId);
-                jedis.hincrBy(tubeStats, STATS_FJS, 1);
-                return true;
-            }
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-        return false;
-    }
+	/**
+	 * release a job to delay queue from retain queue.
+	 * 
+	 * @param jobId
+	 * @param dtr
+	 * 
+	 * @return
+	 */
+	public boolean release(String jobId, long dtr) {
+		if (redisClient.zscore(retainQueue, jobId) == null) {
+			return false;
+		}
 
-    /**
-     * the job is failure, move the job from retain to failed queue.
-     * 
-     * @param jobId
-     * 
-     * @return
-     */
-    public boolean failure(String jobId) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            if (jedis.zscore(retainQueue, jobId) == null) {
-                return false;
-            }
+		if (redisClient.exists(jobPrefix + jobId)) {
+			redisClient.hset(jobPrefix + jobId, JOB_DTR, Long.toString(dtr));
+			double score = System.currentTimeMillis() + dtr;
+			redisClient.zadd(delayQueue, score, jobId);
+			redisClient.zrem(retainQueue, jobId);
+			return true;
+		}
 
-            if (jedis.exists(jobPrefix + jobId)) {
-                double score = System.currentTimeMillis();
-                jedis.zadd(failedQueue, score, jobId);
-                jedis.zrem(retainQueue, jobId);
-                return true;
-            }
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-        return false;
-    }
+		return false;
+	}
 
-    /**
-     * fetch the failed job to peek it.
-     * 
-     * @param max
-     * 
-     * @return
-     */
-    public List<Job> peek(long max) {
-        List<Job> jobs = new ArrayList<>();
-        Jedis jedis = jedisPool.getResource();
-        try {
-            Set<String> jobSet = jedis.zrange(failedQueue, 0, max - 1);
-            for (String jobId : jobSet) {
-                Map<String, String> jobMap = jedis.hgetAll(jobPrefix + jobId);
-                if (jobMap == null || jobMap.get(JOB_ID) == null) {
-                    LOG.warn("job[{}:{}] is invalid, remove from failed queue.", tubeName, jobId);
-                    discard(jobId);
-                } else {
-                    Job job = null;
-                    try {
-                        job = map2Job(jobMap);
-                    } catch (Exception e) {
-                        LOG.warn("job[{}:{}] is invalid, discard the job.", tubeName, jobId);
-                        discard(jobId);
-                        continue;
-                    }
-                    jobs.add(job);
-                }
-            }
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-        return jobs;
-    }
+	/**
+	 * the job is success, finish the job.
+	 * 
+	 * @param jobId
+	 * 
+	 * @return
+	 */
+	public boolean finish(String jobId) {
+		if (redisClient.zrem(retainQueue, jobId) > 0) {
+			redisClient.del(jobPrefix + jobId);
+			redisClient.hincrBy(tubeStats, STATS_FJS, 1);
+			return true;
+		}
+		return false;
+	}
 
-    /**
-     * discard job from tube's failed queue.
-     * 
-     * @param jobId
-     * 
-     * @return
-     */
-    public boolean discard(String jobId) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            if (jedis.zrem(failedQueue, jobId) > 0) {
-                jedis.del(jobPrefix + jobId);
-                jedis.hincrBy(tubeStats, STATS_FJS, 1);
-                return true;
-            }
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-        return false;
-    }
+	/**
+	 * the job is failure, move the job from retain to failed queue.
+	 * 
+	 * @param jobId
+	 * 
+	 * @return
+	 */
+	public boolean failure(String jobId) {
+		if (redisClient.zscore(retainQueue, jobId) == null) {
+			return false;
+		}
 
-    /**
-     * kick the failed job to delay queue.
-     * 
-     * @param jobId
-     * @param dtr
-     * 
-     * @return
-     */
-    public boolean kick(String jobId, long dtr) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            if (jedis.zscore(failedQueue, jobId) == null) {
-                return false;
-            }
+		if (redisClient.exists(jobPrefix + jobId)) {
+			double score = System.currentTimeMillis();
+			redisClient.zadd(failedQueue, score, jobId);
+			redisClient.zrem(retainQueue, jobId);
+			return true;
+		}
 
-            String jobKey = jobPrefix + jobId;
-            if (jedis.exists(jobKey)) {
-                jedis.hset(jobKey, JOB_DTR, Long.toString(dtr));
-                double score = System.currentTimeMillis() + dtr;
-                jedis.zadd(delayQueue, score, jobId);
-                jedis.zrem(failedQueue, jobId);
-                return true;
-            }
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
+		return false;
+	}
 
-        return false;
-    }
+	/**
+	 * fetch the failed job to peek it.
+	 * 
+	 * @param max
+	 * 
+	 * @return
+	 */
+	public List<Job> peek(long max) {
+		List<Job> jobs = new ArrayList<>();
+		Set<String> jobSet = redisClient.zrange(failedQueue, 0, max - 1);
+		for (String jobId : jobSet) {
+			Map<String, String> jobMap = redisClient.hgetAll(jobPrefix + jobId);
+			if (jobMap == null || jobMap.get(JOB_ID) == null) {
+				LOG.warn("job[{}:{}] is invalid, remove from failed queue.", tubeName, jobId);
+				discard(jobId);
+			} else {
+				Job job = null;
+				try {
+					job = map2Job(jobMap);
+				} catch (Exception e) {
+					LOG.warn("job[{}:{}] is invalid, discard the job.", tubeName, jobId);
+					discard(jobId);
+					continue;
+				}
+				jobs.add(job);
+			}
+		}
+		return jobs;
+	}
 
-    private Map<String, String> job2Map(Job job) {
-        Map<String, String> res = new HashMap<>();
-        res.put(JOB_ID, job.getId());
-        res.put(JOB_DTR, Long.toString(job.getDtr()));
-        res.put(JOB_TTR, Long.toString(job.getTtr()));
-        res.put(JOB_NOE, Long.toString(job.getNoe()));
-        try {
-            res.put(JOB_DATA, encode(job.getData()));
-        } catch (UnsupportedEncodingException e) {
-            throw new ApplicationException(e);
-        }
-        return res;
-    }
+	/**
+	 * discard job from tube's failed queue.
+	 * 
+	 * @param jobId
+	 * 
+	 * @return
+	 */
+	public boolean discard(String jobId) {
+		if (redisClient.zrem(failedQueue, jobId) > 0) {
+			redisClient.del(jobPrefix + jobId);
+			redisClient.hincrBy(tubeStats, STATS_FJS, 1);
+			return true;
+		}
+		return false;
+	}
 
-    private Job map2Job(Map<String, String> map) {
-        Job job = new Job();
-        String id = map.get(JOB_ID);
-        if (id != null) {
-            job.setId(id);
-        }
-        String dtr = map.get(JOB_DTR);
-        if (dtr != null) {
-            job.setDtr(Long.parseLong(dtr));
-        }
-        String ttr = map.get(JOB_TTR);
-        if (ttr != null) {
-            job.setTtr(Long.parseLong(ttr));
-        }
-        String noe = map.get(JOB_NOE);
-        if (noe != null) {
-            job.setNoe(Long.parseLong(noe));
-        }
-        String data = map.get(JOB_DATA);
-        if (data != null) {
-            try {
-                job.setData(decode(data));
-            } catch (UnsupportedEncodingException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return job;
-    }
+	/**
+	 * kick the failed job to delay queue.
+	 * 
+	 * @param jobId
+	 * @param dtr
+	 * 
+	 * @return
+	 */
+	public boolean kick(String jobId, long dtr) {
+		if (redisClient.zscore(failedQueue, jobId) == null) {
+			return false;
+		}
 
-    private String encode(byte[] data) throws UnsupportedEncodingException {
-        return new String(Base64.getEncoder().encode(data), UTF_8);
-    }
+		String jobKey = jobPrefix + jobId;
+		if (redisClient.exists(jobKey)) {
+			redisClient.hset(jobKey, JOB_DTR, Long.toString(dtr));
+			double score = System.currentTimeMillis() + dtr;
+			redisClient.zadd(delayQueue, score, jobId);
+			redisClient.zrem(failedQueue, jobId);
+			return true;
+		}
 
-    private byte[] decode(String data) throws UnsupportedEncodingException {
-        return Base64.getDecoder().decode(data.getBytes(UTF_8));
-    }
+		return false;
+	}
+
+	private Map<String, String> job2Map(Job job) {
+		Map<String, String> res = new HashMap<>();
+		res.put(JOB_ID, job.getId());
+		res.put(JOB_DTR, Long.toString(job.getDtr()));
+		res.put(JOB_TTR, Long.toString(job.getTtr()));
+		res.put(JOB_NOE, Long.toString(job.getNoe()));
+		try {
+			res.put(JOB_DATA, encode(job.getData()));
+		} catch (UnsupportedEncodingException e) {
+			throw new ApplicationException(e);
+		}
+		return res;
+	}
+
+	private Job map2Job(Map<String, String> map) {
+		Job job = new Job();
+		String id = map.get(JOB_ID);
+		if (id != null) {
+			job.setId(id);
+		}
+		String dtr = map.get(JOB_DTR);
+		if (dtr != null) {
+			job.setDtr(Long.parseLong(dtr));
+		}
+		String ttr = map.get(JOB_TTR);
+		if (ttr != null) {
+			job.setTtr(Long.parseLong(ttr));
+		}
+		String noe = map.get(JOB_NOE);
+		if (noe != null) {
+			job.setNoe(Long.parseLong(noe));
+		}
+		String data = map.get(JOB_DATA);
+		if (data != null) {
+			try {
+				job.setData(decode(data));
+			} catch (UnsupportedEncodingException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return job;
+	}
+
+	private String encode(byte[] data) throws UnsupportedEncodingException {
+		return new String(Base64.getEncoder().encode(data), UTF_8);
+	}
+
+	private byte[] decode(String data) throws UnsupportedEncodingException {
+		return Base64.getDecoder().decode(data.getBytes(UTF_8));
+	}
 
 }

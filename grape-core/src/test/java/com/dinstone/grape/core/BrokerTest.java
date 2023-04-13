@@ -21,73 +21,76 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
+import com.dinstone.grape.redis.PooledClient;
+
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
 public class BrokerTest {
 
-    @Test
-    public void test() throws IOException {
-        JedisPool jedisPool = new JedisPool("127.0.0.1", 6379);
+	@SuppressWarnings("deprecation")
+	@Test
+	public void test() throws IOException {
+		JedisPool jedisPool = new JedisPool("127.0.0.1", 6379);
 
-        Jedis jedis = jedisPool.getResource();
-        try {
-            jedis.flushDB();
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
+		Jedis jedis = jedisPool.getResource();
+		try {
+			jedis.flushDB();
+		} finally {
+			if (jedis != null) {
+				jedis.close();
+			}
+		}
 
-        Broker broker = new Broker(jedisPool).start();
+		Broker broker = new Broker(new PooledClient(jedisPool)).start();
 
-        String tubeName = "flow-test";
-        broker.createTube(tubeName);
+		String tubeName = "flow-test";
+		broker.createTube(tubeName);
 
-        boolean b = broker.produce(tubeName, new Job("Job-0", 1000000, 30000, "first job".getBytes()));
-        if (!b) {
-            System.err.println("produce failed");
-            return;
-        }
-        b = broker.delete(tubeName, "Job-0");
-        if (!b) {
-            System.err.println("delete failed");
-            return;
-        }
+		boolean b = broker.produce(tubeName, new Job("Job-0", 1000000, 30000, "first job".getBytes()));
+		if (!b) {
+			System.err.println("produce failed");
+			return;
+		}
+		b = broker.delete(tubeName, "Job-0");
+		if (!b) {
+			System.err.println("delete failed");
+			return;
+		}
 
-        b = broker.produce(tubeName, new Job("Job-1", 1000, 30000, "1 job".getBytes()));
-        b = broker.produce(tubeName, new Job("Job-2", 1000, 30000, "2 job".getBytes()));
-        b = broker.produce(tubeName, new Job("Job-3", 1000, 30000, "3 job".getBytes()));
-        b = broker.produce(tubeName, new Job("Job-4", 3000, 3000, "4 job".getBytes()));
+		b = broker.produce(tubeName, new Job("Job-1", 1000, 30000, "1 job".getBytes()));
+		b = broker.produce(tubeName, new Job("Job-2", 1000, 30000, "2 job".getBytes()));
+		b = broker.produce(tubeName, new Job("Job-3", 1000, 30000, "3 job".getBytes()));
+		b = broker.produce(tubeName, new Job("Job-4", 3000, 3000, "4 job".getBytes()));
 
-        try {
-            TimeUnit.SECONDS.sleep(1);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+		try {
+			TimeUnit.SECONDS.sleep(1);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 
-        List<Job> jobs = broker.consume(tubeName, 10);
-        Job job = jobs.get(0);
-        broker.finish(tubeName, job.getId());
+		List<Job> jobs = broker.consume(tubeName, 10);
+		Job job = jobs.get(0);
+		broker.finish(tubeName, job.getId());
 
-        job = jobs.get(1);
-        broker.failure(tubeName, job.getId());
+		job = jobs.get(1);
+		broker.failure(tubeName, job.getId());
 
-        job = jobs.get(2);
-        broker.release(tubeName, job.getId(), 2000);
+		job = jobs.get(2);
+		broker.release(tubeName, job.getId(), 2000);
 
-        System.out.println(broker.stats(tubeName));
+		System.out.println(broker.stats(tubeName));
 
-        try {
-            TimeUnit.SECONDS.sleep(3);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+		try {
+			TimeUnit.SECONDS.sleep(3);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 
-        System.out.println(broker.stats(tubeName));
+		System.out.println(broker.stats(tubeName));
 
-        broker.stop();
-        jedisPool.destroy();
-    }
+		broker.stop();
+		jedisPool.destroy();
+	}
 
 }

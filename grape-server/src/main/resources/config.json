@@ -17,8 +17,13 @@
 		"scheduledSize": 4
 	},
 	"redis": {
-		"host": "127.0.0.1",
-		"port": 6379,
+		"nodes": [
+			{
+				"host": "127.0.0.1",
+				"port": 6379
+			}
+		],
+		"model": "pooled",
 		"maxTotal": 8,
 		"minIdle": 1,
 		"timeout": 2000,

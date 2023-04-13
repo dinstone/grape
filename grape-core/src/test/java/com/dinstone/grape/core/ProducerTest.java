@@ -16,34 +16,72 @@
 package com.dinstone.grape.core;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.dinstone.grape.redis.ClusterClient;
+import com.dinstone.grape.redis.PooledClient;
+
+import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 public class ProducerTest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ProducerTest.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ProducerTest.class);
 
-    @Test
-    public void test() throws IOException {
-        JedisPool jedisPool = new JedisPool("192.168.1.120", 6379);
-        Broker tubeManager = new Broker(jedisPool);
-        tubeManager.createTube("test");
+	public static void main(String[] args) throws IOException {
+//		testCluster();
+		 testPooled();
+	}
 
-        long s = System.currentTimeMillis();
-        LOG.info("produce job for test start");
-        for (int i = 0; i < 10000; i++) {
-            int dtr = ((i / 100) + 3) * 1000;
-            // System.out.println("dtr = " + dtr);
-            tubeManager.produce("test", new Job("Job-" + i, dtr, 30000, "hello,haha".getBytes()));
-        }
-        long e = System.currentTimeMillis();
-        LOG.info("produce job for test finish, take's {}ms", (e - s));
+	public static void testPooled() throws IOException {
+		JedisPool jedisPool = new JedisPool("192.168.1.120", 6379);
+		Broker broker = new Broker(new PooledClient(jedisPool));
+		broker.createTube("test");
 
-        jedisPool.destroy();
-    }
+		LOG.info("produce job for test start");
+		long s = System.currentTimeMillis();
+		byte[] bytes = "hello,haha".getBytes();
+		for (int i = 0; i < 1000; i++) {
+			int dtr = ((i / 100) + 3) * 1000;
+			broker.produce("test", new Job("Job-" + i, dtr, 30000, bytes));
+		}
+		long e = System.currentTimeMillis();
+		LOG.info("produce job for test finish, take's {}ms", (e - s));
+
+		jedisPool.destroy();
+	}
+
+	public static void testCluster() throws IOException {
+		Set<HostAndPort> jedisClusterNode = new HashSet<HostAndPort>();
+		jedisClusterNode.add(new HostAndPort("192.168.1.120", 7001));
+		jedisClusterNode.add(new HostAndPort("192.168.1.120", 7002));
+		jedisClusterNode.add(new HostAndPort("192.168.1.120", 7003));
+
+		JedisPoolConfig config = new JedisPoolConfig();
+		config.setMaxTotal(100);
+		config.setMaxIdle(10);
+
+		JedisCluster jedisCluster = new JedisCluster(jedisClusterNode, 1000, 3, config);
+
+		Broker broker = new Broker(new ClusterClient(jedisCluster), "grape", 4);
+		broker.createTube("test");
+
+		LOG.info("produce job for test start");
+		long s = System.currentTimeMillis();
+		byte[] bytes = "hello,haha".getBytes();
+		for (int i = 0; i < 1000; i++) {
+			int dtr = ((i / 100) + 3) * 1000;
+			broker.produce("test", new Job("Job-" + i, dtr, 30000, bytes));
+		}
+		long e = System.currentTimeMillis();
+		LOG.info("produce job for test finish, take's {}ms", (e - s));
+
+	}
 
 }

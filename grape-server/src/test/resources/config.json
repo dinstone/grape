@@ -17,8 +17,21 @@
 		"scheduledSize": 4
 	},
 	"redis": {
-		"host": "192.168.1.120",
-		"port": 6379,
+		"nodes": [
+			{
+				"host": "192.168.1.120",
+				"port": 7001
+			},
+			{
+				"host": "192.168.1.120",
+				"port": 7002
+			},
+			{
+				"host": "192.168.1.120",
+				"port": 7003
+			}
+		],
+		"model": "cluster",
 		"maxTotal": 4,
 		"minIdle": 1,
 		"timeout": 2000,

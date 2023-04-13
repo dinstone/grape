@@ -108,8 +108,8 @@ services:
     depends_on:
       - redis-node-6
 
-  shell:
-    container_name: shell
+  cluster-shell:
+    container_name: cluster-shell
     image: busybox
     stdin_open: true
     tty: true

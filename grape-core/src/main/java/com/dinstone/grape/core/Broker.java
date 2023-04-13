@@ -15,14 +15,15 @@
  */
 package com.dinstone.grape.core;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -31,292 +32,240 @@ import org.slf4j.LoggerFactory;
 import com.dinstone.grape.exception.ApplicationException;
 import com.dinstone.grape.exception.BusinessException;
 import com.dinstone.grape.exception.TubeErrorCode;
-import com.dinstone.grape.util.NamedThreadFactory;
-import com.dinstone.grape.util.RedisPermitLock;
-
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import com.dinstone.grape.redis.RedisClient;
 
 public class Broker {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
+	private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
 
-    private static final String THREAD_PREFIX = "broker-schedule-thread-";
+	private static final String THREAD_PREFIX = "broker-schedule-thread-";
 
-    private static final String TUBENAME_REGEX = "^([a-z]|[A-Z])(\\w|-)*";
+	private static final String TUBENAME_REGEX = "^([a-z]|[A-Z])(\\w|-)*";
 
-    private static final int TUBENAME_LENGTH = 64;
+	private static final int TUBENAME_LENGTH = 64;
 
-    private static final int DEFAULT_TTR = 1000;
+	private static final int DEFAULT_TTR = 1000;
 
-    private final String group;
+	private final String group;
 
-    private final String tubeSetKey;
+	private final String tubeSetKey;
 
-    private final String consumeLockPrefix;
+	private final RedisClient redisClient;
 
-    private final String scheduleLockPrefix;
+	private final Map<String, Tube> tubeMap;
 
-    private final JedisPool jedisPool;
+	private final Map<String, Runnable> taskMap;
 
-    private final Map<String, Tube> tubeMap;
+	private final ScheduledExecutorService executor;
 
-    private final Map<String, Runnable> taskMap;
+	public Broker(RedisClient redisClient) {
+		this(redisClient, null, Runtime.getRuntime().availableProcessors());
+	}
 
-    private final ScheduledExecutorService executor;
+	public Broker(RedisClient redisClient, String group, int scheduledSize) {
+		if (redisClient == null) {
+			throw new ApplicationException("redisClient is null");
+		}
+		if (scheduledSize <= 0) {
+			throw new ApplicationException("scheduledSize must be greater than 0");
+		}
 
-    public Broker(JedisPool jedisPool) {
-        this(jedisPool, null, Runtime.getRuntime().availableProcessors());
-    }
+		if (group != null && !group.isEmpty()) {
+			this.group = group;
+			this.tubeSetKey = group + ":tube:set";
+		} else {
+			this.group = "";
+			this.tubeSetKey = "tube:set";
+		}
 
-    public Broker(JedisPool jedisPool, String group, int scheduledSize) {
-        if (jedisPool == null) {
-            throw new ApplicationException("jedisPool is null");
-        }
-        if (scheduledSize <= 0) {
-            throw new ApplicationException("scheduledSize must be greater than 0");
-        }
+		this.redisClient = redisClient;
+		this.tubeMap = new ConcurrentHashMap<>();
+		this.taskMap = new ConcurrentHashMap<>();
+		this.executor = Executors.newScheduledThreadPool(scheduledSize, new ThreadFactory() {
 
-        if (group != null && !group.isEmpty()) {
-            this.group = group;
-            this.tubeSetKey = group + ":tube:set";
-            this.consumeLockPrefix = group + ":lock:consume:";
-            this.scheduleLockPrefix = group + ":lock:schedule:";
-        } else {
-            this.group = "";
-            this.tubeSetKey = "tube:set";
-            this.consumeLockPrefix = "lock:consume:";
-            this.scheduleLockPrefix = "lock:schedule:";
-        }
+			private final AtomicInteger index = new AtomicInteger();
 
-        this.jedisPool = jedisPool;
-        this.tubeMap = new ConcurrentHashMap<>();
-        this.taskMap = new ConcurrentHashMap<>();
-        this.executor = Executors.newScheduledThreadPool(scheduledSize, new NamedThreadFactory(THREAD_PREFIX));
-    }
+			@Override
+			public Thread newThread(Runnable r) {
+				return new Thread(r, THREAD_PREFIX + index.incrementAndGet());
+			}
+		});
+	}
 
-    public Set<String> tubeSet() {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            return jedis.smembers(tubeSetKey);
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-    }
+	public Set<String> tubeSet() {
+		return redisClient.smembers(tubeSetKey);
+	}
 
-    public Stats stats(String tubeName) {
-        return loadTube(tubeName).stats();
-    }
+	public Stats stats(String tubeName) {
+		return loadTube(tubeName).stats();
+	}
 
-    private Tube loadTube(String tubeName) {
-        Tube tube = tubeMap.get(tubeName);
-        if (tube != null) {
-            return tube;
-        }
+	private Tube loadTube(String tubeName) {
+		Tube tube = tubeMap.get(tubeName);
+		if (tube != null) {
+			return tube;
+		}
 
-        if (contains(tubeName)) {
-            return createTube(tubeName);
-        }
+		if (contains(tubeName)) {
+			return createTube(tubeName);
+		}
 
-        throw new BusinessException(TubeErrorCode.UNKOWN, "unkown tube name '" + tubeName + "'");
-    }
+		throw new BusinessException(TubeErrorCode.UNKOWN, "unkown tube name '" + tubeName + "'");
+	}
 
-    private boolean contains(String tubeName) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            return jedis.sismember(tubeSetKey, tubeName);
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-    }
+	private boolean contains(String tubeName) {
+		return redisClient.sismember(tubeSetKey, tubeName);
+	}
 
-    public Tube createTube(String tubeName) {
-        Pattern p = Pattern.compile(TUBENAME_REGEX);
-        if (!p.matcher(tubeName).matches()) {
-            throw new BusinessException(TubeErrorCode.INVALID, "tube name not match " + TUBENAME_REGEX);
-        }
-        if (tubeName.length() > TUBENAME_LENGTH) {
-            throw new BusinessException(TubeErrorCode.GREATE, "tube name length greate than " + TUBENAME_LENGTH);
-        }
+	public Tube createTube(String tubeName) {
+		Pattern p = Pattern.compile(TUBENAME_REGEX);
+		if (!p.matcher(tubeName).matches()) {
+			throw new BusinessException(TubeErrorCode.INVALID, "tube name not match " + TUBENAME_REGEX);
+		}
+		if (tubeName.length() > TUBENAME_LENGTH) {
+			throw new BusinessException(TubeErrorCode.GREATE, "tube name length greate than " + TUBENAME_LENGTH);
+		}
 
-        Tube tube = tubeMap.get(tubeName);
-        if (tube == null) {
-            addTube(tubeName);
-            tube = new Tube(group, tubeName, jedisPool);
-            tubeMap.putIfAbsent(tubeName, tube);
-            tube = tubeMap.get(tubeName);
-        }
-        return tube;
-    }
+		Tube tube = tubeMap.get(tubeName);
+		if (tube == null) {
+			addTube(tubeName);
+			tube = new Tube(group, tubeName, redisClient);
+			tubeMap.putIfAbsent(tubeName, tube);
+			tube = tubeMap.get(tubeName);
+		}
+		return tube;
+	}
 
-    private void addTube(String tubeName) {
-        LOG.info("add tube {}/{}", group, tubeName);
-        Jedis jedis = jedisPool.getResource();
-        try {
-            jedis.sadd(tubeSetKey, tubeName);
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-    }
+	public void deleteTube(String tubeName) {
+		Tube tube = tubeMap.remove(tubeName);
+		if (tube == null) {
+			if (contains(tubeName)) {
+				tube = new Tube(group, tubeName, redisClient);
+			}
+		}
 
-    public void deleteTube(String tubeName) {
-        Tube tube = tubeMap.remove(tubeName);
-        if (tube == null) {
-            if (contains(tubeName)) {
-                tube = new Tube(group, tubeName, jedisPool);
-            }
-        }
+		// remove tube
+		removeTube(tubeName);
 
-        // remove tube
-        removeTube(tubeName);
+		// destroy tube
+		if (tube != null) {
+			tube.destroy();
+		}
+	}
 
-        // destroy tube
-        if (tube != null) {
-            tube.destroy();
-        }
-    }
+	private void addTube(String tubeName) {
+		LOG.info("add tube {}/{}", group, tubeName);
+		redisClient.sadd(tubeSetKey, tubeName);
+	}
 
-    private void removeTube(String tubeName) {
-        Jedis jedis = jedisPool.getResource();
-        try {
-            jedis.srem(tubeSetKey, tubeName);
-        } finally {
-            if (jedis != null) {
-                jedis.close();
-            }
-        }
-    }
+	private void removeTube(String tubeName) {
+		redisClient.srem(tubeSetKey, tubeName);
+	}
 
-    public boolean produce(String tubeName, Job job) {
-        if (tubeName == null || tubeName.length() == 0) {
-            throw new BusinessException(TubeErrorCode.EMPTY, "tubeName is empty");
-        }
-        if (job.getTtr() < DEFAULT_TTR) {
-            job.setTtr(DEFAULT_TTR);
-        }
-        return loadTube(tubeName).produce(job);
-    }
+	public boolean produce(String tubeName, Job job) {
+		if (tubeName == null || tubeName.length() == 0) {
+			throw new BusinessException(TubeErrorCode.EMPTY, "tubeName is empty");
+		}
+		if (job.getTtr() < DEFAULT_TTR) {
+			job.setTtr(DEFAULT_TTR);
+		}
+		return loadTube(tubeName).produce(job);
+	}
 
-    public boolean delete(String tubeName, String jobId) {
-        return loadTube(tubeName).delete(jobId);
-    }
+	public boolean delete(String tubeName, String jobId) {
+		return loadTube(tubeName).delete(jobId);
+	}
 
-    @SuppressWarnings("unchecked")
-    public List<Job> consume(String tubeName, int max) {
-        Tube tube = loadTube(tubeName);
+	public List<Job> consume(String tubeName, int max) {
+		if (max < 1) {
+			max = 1;
+		}
+		Tube tube = loadTube(tubeName);
+		return tube.consume(max);
+	}
 
-        if (max < 1) {
-            max = 1;
-        }
+	public boolean finish(String tubeName, String jobId) {
+		return loadTube(tubeName).finish(jobId);
+	}
 
-        RedisPermitLock consumeLock = new RedisPermitLock(jedisPool, consumeLockPrefix + tubeName, 30);
-        if (consumeLock.acquire()) {
-            try {
-                return tube.consume(max);
-            } finally {
-                consumeLock.release();
-            }
-        }
+	public boolean discard(String tubeName, String jobId) {
+		return loadTube(tubeName).discard(jobId);
+	}
 
-        return Collections.EMPTY_LIST;
-    }
+	public List<Job> peek(String tubeName, long max) {
+		return loadTube(tubeName).peek(max);
+	}
 
-    public boolean finish(String tubeName, String jobId) {
-        return loadTube(tubeName).finish(jobId);
-    }
+	public boolean kick(String tubeName, String jobId, long dtr) {
+		return loadTube(tubeName).kick(jobId, dtr);
+	}
 
-    public boolean discard(String tubeName, String jobId) {
-        return loadTube(tubeName).discard(jobId);
-    }
+	/**
+	 * move the job of tube to delay queue from reserved.
+	 * 
+	 * @param tubeName
+	 * @param jobId
+	 * @param dtr
+	 * 
+	 * @return
+	 */
+	public boolean release(String tubeName, String jobId, long dtr) {
+		return loadTube(tubeName).release(jobId, dtr);
+	}
 
-    public List<Job> peek(String tubeName, long max) {
-        return loadTube(tubeName).peek(max);
-    }
+	public boolean failure(String tubeName, String jobId) {
+		return loadTube(tubeName).failure(jobId);
+	}
 
-    public boolean kick(String tubeName, String jobId, long dtr) {
-        return loadTube(tubeName).kick(jobId, dtr);
-    }
+	public Broker start() {
+		executor.scheduleAtFixedRate(new Runnable() {
 
-    /**
-     * move the job of tube to delay queue from reserved.
-     * 
-     * @param tubeName
-     * @param jobId
-     * @param dtr
-     * 
-     * @return
-     */
-    public boolean release(String tubeName, String jobId, long dtr) {
-        return loadTube(tubeName).release(jobId, dtr);
-    }
+			@Override
+			public void run() {
+				try {
+					dispatch();
+				} catch (Exception e) {
+					LOG.warn("dispatch {} error: {}", group, e.getMessage());
+				}
+			}
+		}, 1, 2, TimeUnit.SECONDS);
 
-    public boolean failure(String tubeName, String jobId) {
-        return loadTube(tubeName).failure(jobId);
-    }
+		LOG.info("Broker[{}] is started", group);
+		return this;
+	}
 
-    public Broker start() {
-        executor.scheduleAtFixedRate(new Runnable() {
+	public Broker stop() {
+		executor.shutdown();
+		try {
+			executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.HOURS);
+		} catch (InterruptedException e) {
+		}
+		LOG.info("Broker[{}] is shutdown", group);
+		return this;
+	}
 
-            @Override
-            public void run() {
-                try {
-                    dispatch();
-                } catch (Exception e) {
-                    LOG.warn("dispatch {} error: {}", group, e.getMessage());
-                }
-            }
-        }, 1, 2, TimeUnit.SECONDS);
+	private void dispatch() {
+		Set<String> tubeSet = tubeSet();
+		for (String tubeName : tubeSet) {
+			if (!taskMap.containsKey(tubeName)) {
+				ScheduledTask task = new ScheduledTask(createTube(tubeName));
+				executor.scheduleWithFixedDelay(task, 0, 1, TimeUnit.SECONDS);
+				taskMap.put(tubeName, task);
+			}
+		}
+	}
 
-        LOG.info("Broker[{}] is started", group);
-        return this;
-    }
+	private final class ScheduledTask implements Runnable {
+		private final Tube tube;
 
-    public Broker stop() {
-        executor.shutdown();
-        try {
-            executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.HOURS);
-        } catch (InterruptedException e) {
-        }
-        LOG.info("Broker[{}] is shutdown", group);
-        return this;
-    }
+		private ScheduledTask(Tube tube) {
+			this.tube = tube;
+		}
 
-    private void dispatch() {
-        Set<String> tubeSet = tubeSet();
-        for (String tubeName : tubeSet) {
-            if (!taskMap.containsKey(tubeName)) {
-                ScheduledTask task = new ScheduledTask(createTube(tubeName));
-                executor.scheduleWithFixedDelay(task, 0, 1, TimeUnit.SECONDS);
-                taskMap.put(tubeName, task);
-            }
-        }
-    }
-
-    private final class ScheduledTask implements Runnable {
-        private final Tube tube;
-        private final RedisPermitLock lock;
-
-        private ScheduledTask(Tube tube) {
-            this.tube = tube;
-            this.lock = new RedisPermitLock(jedisPool, scheduleLockPrefix + tube.name(), 30);
-        }
-
-        @Override
-        public void run() {
-            if (lock.acquire()) {
-                try {
-                    tube.schedule();
-                } finally {
-                    lock.release();
-                }
-            }
-        }
-    }
+		@Override
+		public void run() {
+			tube.schedule();
+		}
+	}
 
 }

@@ -25,22 +25,36 @@ import redis.clients.jedis.JedisPoolConfig;
 
 public class JedisClusterTest {
 
-    public static void main(String[] args) throws IOException {
-        Set<HostAndPort> jedisClusterNode = new HashSet<HostAndPort>();
-        jedisClusterNode.add(new HostAndPort("127.0.0.1", 7001));
-        jedisClusterNode.add(new HostAndPort("127.0.0.1", 7002));
-        jedisClusterNode.add(new HostAndPort("127.0.0.1", 7003));
-        JedisPoolConfig config = new JedisPoolConfig();
-        config.setMaxTotal(100);
-        config.setMaxIdle(10);
+	public static void main(String[] args) throws IOException {
+		Set<HostAndPort> jedisClusterNode = new HashSet<HostAndPort>();
+		jedisClusterNode.add(new HostAndPort("192.168.1.120", 7001));
+		jedisClusterNode.add(new HostAndPort("192.168.1.120", 7002));
+		jedisClusterNode.add(new HostAndPort("192.168.1.120", 7003));
 
-        JedisCluster jedisCluster = new JedisCluster(jedisClusterNode, 1000, 3, config);
+		JedisPoolConfig config = new JedisPoolConfig();
+		config.setMaxTotal(100);
+		config.setMaxIdle(10);
 
-        jedisCluster.set("test", "tv");
-        String v = jedisCluster.get("test");
-        System.out.println(v);
+		JedisCluster jedisCluster = new JedisCluster(jedisClusterNode, 1000, 3, config);
 
-        jedisCluster.close();
-    }
+		long s = System.currentTimeMillis();
+		for (int i = 0; i < 1000; i++) {
+			jedisCluster.set("test", "tv");
+		}
+		long e = System.currentTimeMillis();
+		System.out.println("set take's " + (e - s) + "ms");
+
+		s = System.currentTimeMillis();
+		for (int i = 0; i < 1000; i++) {
+			jedisCluster.get("test");
+		}
+		e = System.currentTimeMillis();
+		System.out.println("get take's " + (e - s) + "ms");
+
+		String v = jedisCluster.get("test");
+		System.out.println(v);
+
+		jedisCluster.close();
+	}
 
 }
