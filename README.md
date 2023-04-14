@@ -1,4 +1,4 @@
-# Grape
+# Grape Introduce
 
 Grape is a distributed delay job system based on Redis.
 
@@ -16,6 +16,17 @@ Access grape admin endpoint: http://localhost:9595/
 
 ![image](https://github.com/dinstone/grape/wiki/images/admin-chart.png)
 
+## Realses
+* [1.3.0](https://github.com/dinstone/grape/releases/tag/1.3.0) support redis cluster model.
+
+* [1.2.2](https://github.com/dinstone/grape/releases/tag/1.2.2)  is a stable version of 1.2 and has fixed several bugs.
+
+* 1.2.0 optimized the scheduling model and supports zero delay scheduling algorithms
+
+* 1.1.0 add admin web UI project.
+
+* 1.0.0 have released a Redis based delayed job system and opened the rest interface.
+
 # Quick Start
 
 ## step 1: clone project from github
@@ -27,13 +38,88 @@ git clone https://github.com/dinstone/grape.git
 ## step 2: source building
 
 ```
-maven install
+cd grape
+maven package
 ```
 
 ## step 3: deployment package
 
 ```
-unzip grape-server-1.2.0.zip
+cd grape/grape-server/target
+unzip grape-server-1.3.0.zip
+cd grape-server-1.3.0/config/
+```
+
+edit redis config from config.json file.
+
+* jedis pooled client config
+
+```json
+"redis": {
+  "nodes": [
+    {
+      "host": "127.0.0.1",
+      "port": 6379
+    }
+  ],
+  "model": "pooled",
+  "maxTotal": 8,
+  "minIdle": 1,
+  "timeout": 2000,
+  "maxWaitMillis": 3000,
+  "numTestsPerEvictionRun": -1,
+  "minEvictableIdleTimeMillis": 60000,
+  "timeBetweenEvictionRunsMillis": 30000
+}
+```
+
+* jedis cluster client config
+
+```json
+"redis": {
+  "nodes": [
+    {
+      "host": "192.168.1.120",
+      "port": 7001
+    },
+    {
+      "host": "192.168.1.120",
+      "port": 7002
+    },
+    {
+      "host": "192.168.1.120",
+      "port": 7003
+    }
+  ],
+  "model": "cluster",
+  "maxTotal": 4,
+  "minIdle": 1,
+  "timeout": 2000,
+  "maxWaitMillis": 3000,
+  "numTestsPerEvictionRun": -1,
+  "minEvictableIdleTimeMillis": 60000,
+  "timeBetweenEvictionRunsMillis": 30000
+}
+```
+
+edit users info from user.json file.
+
+```json
+{
+	"admin": {
+		"password": "grape",
+		"roles": [
+			"writer",
+			"reader"
+		]
+	},
+	"guid": {
+		"password": "grape",
+		"roles": [
+			"reader"
+		]
+	}
+}
 ```
 
 ## step 4: start grape by script

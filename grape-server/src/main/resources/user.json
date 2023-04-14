@@ -7,7 +7,7 @@
 		]
 	},
 	"guid": {
-		"pwd": "grape",
+		"password": "grape",
 		"roles": [
 			"reader"
 		]
