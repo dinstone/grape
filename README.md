@@ -16,7 +16,8 @@ Access grape admin endpoint: http://localhost:9595/
 
 ![image](https://github.com/dinstone/grape/wiki/images/admin-chart.png)
 
-## Realses
+## Releases
+
 * [1.3.0](https://github.com/dinstone/grape/releases/tag/1.3.0) support redis cluster model.
 
 * [1.2.2](https://github.com/dinstone/grape/releases/tag/1.2.2)  is a stable version of 1.2 and has fixed several bugs.

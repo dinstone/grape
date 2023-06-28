@@ -77,7 +77,7 @@ public class WebHttpVerticle extends AbstractVerticle {
 		vertx.createHttpServer(serverOptions).connectionHandler(new Handler<HttpConnection>() {
 			@Override
 			public void handle(HttpConnection hc) {
-				LOG.info("Connection {} opened", hc.remoteAddress());
+				LOG.debug("Connection {} opened", hc.remoteAddress());
 				hc.exceptionHandler(new Handler<Throwable>() {
 
 					@Override
@@ -90,7 +90,7 @@ public class WebHttpVerticle extends AbstractVerticle {
 
 					@Override
 					public void handle(Void event) {
-						LOG.info("Connection {} closed", hc.remoteAddress());
+						LOG.debug("Connection {} closed", hc.remoteAddress());
 					}
 				});
 			}

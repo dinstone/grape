@@ -35,7 +35,7 @@ import redis.clients.jedis.JedisPoolConfig;
 
 public class ConsumerTest {
 
-	public static class Consumer extends Thread {
+	private static class Consumer extends Thread {
 
 		private static final Logger LOG = LoggerFactory.getLogger(ConsumerTest.Consumer.class);
 
@@ -62,10 +62,13 @@ public class ConsumerTest {
 		@Override
 		public void run() {
 			while (!closed.get()) {
+				Stats stats = broker.stats(tubeName);
+				LOG.info("{}", stats);
+
 				List<Job> jobs = broker.consume(tubeName, 50);
 				if (jobs == null || jobs.size() == 0) {
 					try {
-						Thread.sleep(10);
+						Thread.sleep(1000);
 					} catch (InterruptedException e) {
 						break;
 					}
@@ -74,16 +77,16 @@ public class ConsumerTest {
 
 				for (Job job : jobs) {
 					broker.finish(tubeName, job.getId());
-					LOG.info("consumer:{} handle job[{}:{}]", index, tubeName, job.getId());
 				}
+				LOG.info("consumer:{} handle jobs[{}:{}]", index, tubeName, jobs.size());
 			}
 		}
 
 	}
 
 	public static void main(String[] args) {
-//		clusterBroker();
-		pooledBroker();
+		clusterBroker();
+//		pooledBroker();
 	}
 
 	private static void clusterBroker() {

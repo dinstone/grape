@@ -17,12 +17,12 @@ package com.dinstone.grape.core;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,20 +47,14 @@ public class Tube {
 
 	private static final String JOB_DATA = "data";
 
-	/** Finish Job Size */
-	private static final String STATS_FJS = "fjs";
-
-	/** Total Job Size */
-	private static final String STATS_TJS = "tjs";
+	/**
+	 * lock timeout : {@link TimeUnit.SECONDS}
+	 */
+	private static final int LOCK_TIMEOUT = 10;
 
 	private final RedisClient redisClient;
 
 	private final String tubeName;
-
-	/**
-	 * tube stats type : hashmap
-	 */
-	private final String tubeStats;
 
 	/**
 	 * job type : hashmap
@@ -98,16 +92,15 @@ public class Tube {
 		}
 
 		this.jobPrefix = tubePrefix + tubeName + ":job:";
-		this.tubeStats = tubePrefix + tubeName + ":stats";
 
 		this.delayQueue = tubePrefix + tubeName + ":queue:delay";
 		this.retainQueue = tubePrefix + tubeName + ":queue:retain";
 		this.failedQueue = tubePrefix + tubeName + ":queue:failed";
 
 		String consumeLockKey = tubePrefix + tubeName + ":lock:consume";
-		this.consumeLock = new RedisLock(redisClient, consumeLockKey, 30);
+		this.consumeLock = new RedisLock(redisClient, consumeLockKey, LOCK_TIMEOUT);
 		String scheduleLockKey = tubePrefix + tubeName + ":lock:schedule";
-		this.scheduleLock = new RedisLock(redisClient, scheduleLockKey, 30);
+		this.scheduleLock = new RedisLock(redisClient, scheduleLockKey, LOCK_TIMEOUT);
 	}
 
 	/**
@@ -131,16 +124,6 @@ public class Tube {
 		stats.setDelayQueueSize(redisClient.zcard(delayQueue));
 		stats.setRetainQueueSize(redisClient.zcard(retainQueue));
 		stats.setFailedQueueSize(redisClient.zcard(failedQueue));
-
-		Map<String, String> tsMap = redisClient.hgetAll(tubeStats);
-		String tjs = tsMap.get(STATS_TJS);
-		if (tjs != null) {
-			stats.setTotalJobSize(Long.parseLong(tjs));
-		}
-		String fjs = tsMap.get(STATS_FJS);
-		if (fjs != null) {
-			stats.setFinishJobSize(Long.parseLong(fjs));
-		}
 
 		return stats;
 	}
@@ -180,7 +163,6 @@ public class Tube {
 			}
 		}
 
-		redisClient.del(tubeStats);
 		redisClient.del(delayQueue);
 		redisClient.del(retainQueue);
 		redisClient.del(failedQueue);
@@ -201,15 +183,15 @@ public class Tube {
 	}
 
 	private void retainToReady() {
-		long expireTime = System.currentTimeMillis() + 10000;
-		boolean stop = false;
-		while (!stop) {
+		int timeout = Math.max(1, LOCK_TIMEOUT - 1) * 1000;
+		long expiredTime = System.currentTimeMillis() + timeout;
+		while (true) {
 			long currentTime = System.currentTimeMillis();
-			if (currentTime > expireTime) {
+			if (currentTime > expiredTime) {
 				break;
 			}
 
-			String maxScore = "" + currentTime;
+			String maxScore = Long.toString(currentTime);
 			Set<String> jobSet = redisClient.zrangeByScore(retainQueue, "-inf", maxScore, 0, 100);
 			if (jobSet == null || jobSet.size() == 0) {
 				break;
@@ -244,7 +226,6 @@ public class Tube {
 			double score = System.currentTimeMillis() + job.getDtr();
 			long uc = redisClient.zadd(delayQueue, score, job.getId());
 			if (uc > 0) {
-				redisClient.hincrBy(tubeStats, STATS_TJS, 1);
 				return true;
 			}
 		}
@@ -263,7 +244,6 @@ public class Tube {
 		// delete from delay queue
 		if (redisClient.zrem(delayQueue, jobId) > 0) {
 			redisClient.del(jobPrefix + jobId);
-			redisClient.hincrBy(tubeStats, STATS_FJS, 1);
 			return true;
 		}
 
@@ -278,46 +258,57 @@ public class Tube {
 	 * @return
 	 */
 	public List<Job> consume(int max) {
-		if (consumeLock.acquire()) {
-			List<Job> jobs = new ArrayList<>();
-			try {
-				String maxScore = "" + System.currentTimeMillis();
-				Set<String> jobSet = redisClient.zrangeByScore(delayQueue, "-inf", maxScore, 0, max);
-				for (String jobId : jobSet) {
-					Map<String, String> jobMap = redisClient.hgetAll(jobPrefix + jobId);
-					if (jobMap == null || jobMap.get(JOB_ID) == null) {
-						LOG.warn("job[{}:{}] is invalid, remove from ready queue.", tubeName, jobId);
-						// delete from delay queue
-						redisClient.zrem(delayQueue, jobId);
-					} else {
-						Job job = null;
-						try {
-							job = map2Job(jobMap);
-						} catch (Exception e) {
-							LOG.warn("job[{}:{}] is invalid, remove to failure queue.", tubeName, jobId);
-							redisClient.zadd(failedQueue, System.currentTimeMillis(), jobId);
-							redisClient.zrem(delayQueue, jobId);
-
-							continue;
-						}
-
-						// remove job to retain queue from delay queue
-						double score = System.currentTimeMillis() + job.getTtr();
-						redisClient.zadd(retainQueue, score, jobId);
-						redisClient.zrem(delayQueue, jobId);
-						// update the job's number of execution
-						redisClient.hincrBy(jobPrefix + jobId, JOB_NOE, 1);
-
-						jobs.add(job);
-					}
-				}
-			} finally {
-				consumeLock.release();
-			}
-			return jobs;
+		if (!consumeLock.acquire()) {
+			return Collections.emptyList();
 		}
 
-		return Collections.emptyList();
+		List<Job> jobs = new ArrayList<>();
+		try {
+			long currentTime = System.currentTimeMillis();
+			int timeout = Math.max(1, LOCK_TIMEOUT - 1) * 1000;
+			long expiredTime = currentTime + timeout;
+			String maxScore = Long.toString(currentTime);
+			Set<String> jobSet = redisClient.zrangeByScore(delayQueue, "-inf", maxScore, 0, max);
+			for (String jobId : jobSet) {
+				Map<String, String> jobMap = redisClient.hgetAll(jobPrefix + jobId);
+
+				currentTime = System.currentTimeMillis();
+				if (jobMap == null || jobMap.get(JOB_ID) == null) {
+					LOG.warn("job[{}:{}] is invalid, remove from ready queue.", tubeName, jobId);
+					// delete from delay queue
+					redisClient.zrem(delayQueue, jobId);
+				} else {
+					Job job = null;
+					try {
+						job = map2Job(jobMap);
+					} catch (Exception e) {
+						LOG.warn("job[{}:{}] is invalid, remove to failure queue.", tubeName, jobId);
+						redisClient.zadd(failedQueue, currentTime, jobId);
+						redisClient.zrem(delayQueue, jobId);
+
+						continue;
+					}
+
+					// remove job to retain queue from delay queue
+					double score = currentTime + job.getTtr();
+					redisClient.zadd(retainQueue, score, jobId);
+					redisClient.zrem(delayQueue, jobId);
+					// update the job's number of execution
+					redisClient.hincrBy(jobPrefix + jobId, JOB_NOE, 1);
+
+					jobs.add(job);
+				}
+
+				// check date limit
+				if (currentTime > expiredTime) {
+					break;
+				}
+			}
+		} finally {
+			consumeLock.release();
+		}
+		return jobs;
+
 	}
 
 	/**
@@ -354,7 +345,6 @@ public class Tube {
 	public boolean finish(String jobId) {
 		if (redisClient.zrem(retainQueue, jobId) > 0) {
 			redisClient.del(jobPrefix + jobId);
-			redisClient.hincrBy(tubeStats, STATS_FJS, 1);
 			return true;
 		}
 		return false;
@@ -422,7 +412,6 @@ public class Tube {
 	public boolean discard(String jobId) {
 		if (redisClient.zrem(failedQueue, jobId) > 0) {
 			redisClient.del(jobPrefix + jobId);
-			redisClient.hincrBy(tubeStats, STATS_FJS, 1);
 			return true;
 		}
 		return false;
@@ -459,11 +448,7 @@ public class Tube {
 		res.put(JOB_DTR, Long.toString(job.getDtr()));
 		res.put(JOB_TTR, Long.toString(job.getTtr()));
 		res.put(JOB_NOE, Long.toString(job.getNoe()));
-		try {
-			res.put(JOB_DATA, encode(job.getData()));
-		} catch (UnsupportedEncodingException e) {
-			throw new ApplicationException(e);
-		}
+		res.put(JOB_DATA, encode(job.getData()));
 		return res;
 	}
 
@@ -487,21 +472,25 @@ public class Tube {
 		}
 		String data = map.get(JOB_DATA);
 		if (data != null) {
-			try {
-				job.setData(decode(data));
-			} catch (UnsupportedEncodingException e) {
-				throw new RuntimeException(e);
-			}
+			job.setData(decode(data));
 		}
 		return job;
 	}
 
-	private String encode(byte[] data) throws UnsupportedEncodingException {
-		return new String(Base64.getEncoder().encode(data), UTF_8);
+	private String encode(byte[] data) {
+		try {
+			return new String(data, UTF_8);
+		} catch (UnsupportedEncodingException e) {
+			throw new ApplicationException("encode to string error", e);
+		}
 	}
 
-	private byte[] decode(String data) throws UnsupportedEncodingException {
-		return Base64.getDecoder().decode(data.getBytes(UTF_8));
+	private byte[] decode(String data) {
+		try {
+			return data.getBytes(UTF_8);
+		} catch (UnsupportedEncodingException e) {
+			throw new ApplicationException("decode from string error", e);
+		}
 	}
 
 }

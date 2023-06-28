@@ -38,8 +38,6 @@ public class Broker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Broker.class);
 
-	private static final String THREAD_PREFIX = "broker-schedule-thread-";
-
 	private static final String TUBENAME_REGEX = "^([a-z]|[A-Z])(\\w|-)*";
 
 	private static final int TUBENAME_LENGTH = 64;
@@ -49,6 +47,8 @@ public class Broker {
 	private final String group;
 
 	private final String tubeSetKey;
+
+	private final String threadPrefix;
 
 	private final RedisClient redisClient;
 
@@ -73,9 +73,11 @@ public class Broker {
 		if (group != null && !group.isEmpty()) {
 			this.group = group;
 			this.tubeSetKey = group + ":tube:set";
+			this.threadPrefix = "broker-scheduler-" + group + "-";
 		} else {
 			this.group = "";
 			this.tubeSetKey = "tube:set";
+			this.threadPrefix = "broker-scheduler-";
 		}
 
 		this.redisClient = redisClient;
@@ -87,7 +89,7 @@ public class Broker {
 
 			@Override
 			public Thread newThread(Runnable r) {
-				return new Thread(r, THREAD_PREFIX + index.incrementAndGet());
+				return new Thread(r, threadPrefix + index.incrementAndGet());
 			}
 		});
 	}

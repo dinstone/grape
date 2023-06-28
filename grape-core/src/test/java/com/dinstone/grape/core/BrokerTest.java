@@ -31,7 +31,7 @@ public class BrokerTest {
 	@SuppressWarnings("deprecation")
 	@Test
 	public void test() throws IOException {
-		JedisPool jedisPool = new JedisPool("127.0.0.1", 6379);
+		JedisPool jedisPool = new JedisPool("192.168.1.120", 6379);
 
 		Jedis jedis = jedisPool.getResource();
 		try {

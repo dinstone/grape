@@ -69,7 +69,7 @@
 			},
 			series : [ {
 				name : 'Delay',
-				color : 'red',
+				color : 'green',
 				data : (function() {
 					// generate an array of random data
 					var data = [], time = (new Date()).getTime(), i;
@@ -95,21 +95,34 @@
 					}
 					return data;
 				}())
-			} ]
+			} , {
+                name : 'Failed',
+                color : 'red',
+                data : (function() {
+                    // generate an array of random data
+                    var data = [], time = (new Date()).getTime(), i;
+                    for (i = -19; i <= 0; i += 1) {
+                        data.push({
+                            x : time + i * 1000,
+                            y : 0
+                        });
+                    }
+                    return data;
+                }())
+            } ]
 		};
 		return Highcharts.chart(chartId, options);
 	}
 
 	function upateChart(stats, chart) {
 		if (chart && stats) {
-			$("#totalSize").html(stats.totalJobSize);
-			$("#finishSize").html(stats.finishJobSize);
-			$("#failedSize").html(stats.failedQueueSize);
+			//$("#failedSize").html(stats.failedQueueSize);
 
 			var x = stats.dateTime;
 			var series = chart.series;
 			series[0].addPoint([ x, stats.delayQueueSize ], true, true);
 			series[1].addPoint([ x, stats.retainQueueSize ], true, true);
+			series[2].addPoint([ x, stats.failedQueueSize ], true, true);
 		}
 	}
 
@@ -197,32 +210,6 @@
 						<li><a href="index.html">Home</a></li>
 						<li><a href="#">Dashboard</a></li>
 					</ul>
-				</div>
-				<div class=" row">
-					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-user blue"></i>
-							<div>Tube Name</div>
-							<div id="tubeName"></div>
-						</a>
-					</div>
-					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-envelope green"></i>
-							<div>Total Size</div>
-							<div id="totalSize">0</div>
-						</a>
-					</div>
-					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-envelope yellow"></i>
-							<div>Finish Size</div>
-							<div id="finishSize">0</div>
-						</a>
-					</div>
-					<div class="col-md-3 col-sm-3 col-xs-6">
-						<a data-toggle="tooltip" title="" class="well top-block" href="#"> <i class="glyphicon glyphicon-envelope red"></i>
-							<div>Failed Size</div>
-							<div id="failedSize">0</div>
-						</a>
-					</div>
 				</div>
 				<div class="row">
 					<div class="box col-md-12">

@@ -20,43 +20,43 @@ import java.util.regex.Pattern;
 
 public class BaseTest {
 
-    public static void main(String[] args) {
-        String f = "^([a-z]|[A-Z])(\\w|-)*";
-        Pattern p = Pattern.compile(f);
-        String s = "tust_name";
-        Matcher m = p.matcher(s);
-        if (m.matches()) {
-            System.out.println("match");
-        } else {
-            System.out.println("no match");
-        }
+	public static void main(String[] args) {
+		String f = "^([a-z]|[A-Z])(\\w|-)*";
+		Pattern p = Pattern.compile(f);
+		String s = "tust_name";
+		Matcher m = p.matcher(s);
+		if (m.matches()) {
+			System.out.println("match");
+		} else {
+			System.out.println("no match");
+		}
 
-        testExecuteTime();
-    }
+		testExecuteTime();
+	}
 
-    private static void testExecuteTime() {
-        int loopTime = 100000;
-        // Integer i = 0;
-        long i = 0L;
-        long startTime;
+	private static void testExecuteTime() {
+		int loopTime = 100000;
+		// Integer i = 0;
+		long i = 154768L;
+		long startTime;
 
-        startTime = System.currentTimeMillis();
-        for (int j = 0; j < loopTime; j++) {
-            String str = String.valueOf(i);
-        }
-        System.out.println("String.valueOf()：" + (System.currentTimeMillis() - startTime) + "ms");
+		startTime = System.currentTimeMillis();
+		for (int j = 0; j < loopTime; j++) {
+			String str = String.valueOf(i);
+		}
+		System.out.println("String.valueOf()：" + (System.currentTimeMillis() - startTime) + "ms");
 
-        startTime = System.currentTimeMillis();
-        for (int j = 0; j < loopTime; j++) {
-            String str = Long.toString(i);
-        }
-        System.out.println("Long.toString()：" + (System.currentTimeMillis() - startTime) + "ms");
+		startTime = System.currentTimeMillis();
+		for (int j = 0; j < loopTime; j++) {
+			String str = Long.toString(i);
+		}
+		System.out.println("Long.toString()：" + (System.currentTimeMillis() - startTime) + "ms");
 
-        startTime = System.currentTimeMillis();
-        for (int j = 0; j < loopTime; j++) {
-            String str = i + "";
-        }
-        System.out.println("i + \"\"：" + (System.currentTimeMillis() - startTime) + "ms");
-    }
+		startTime = System.currentTimeMillis();
+		for (int j = 0; j < loopTime; j++) {
+			String str = "" + i;
+		}
+		System.out.println("i + \"\"：" + (System.currentTimeMillis() - startTime) + "ms");
+	}
 
 }
