@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 
 public class GrapeLaunchTest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(GrapeLaunch.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GrapeLauncher.class);
 
     private static final String APPLICATION_HOME = "application.home";
 

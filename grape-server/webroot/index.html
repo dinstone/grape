@@ -21,10 +21,6 @@
 				+ '">'
 				+ stats.tubeName
 				+ '</a></td><td>'
-				+ stats.totalJobSize
-				+ '</td><td>'
-				+ stats.finishJobSize
-				+ '</td><td>'
 				+ stats.delayQueueSize
 				+ '</td><td>'
 				+ stats.retainQueueSize
@@ -99,13 +95,18 @@
 	<div class="navbar navbar-default" role="navigation">
 		<div class="navbar-inner">
 			<button type="button" class="navbar-toggle pull-left animated flip">
-				<span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span>
+				<span class="sr-only">Toggle navigation</span> <span
+					class="icon-bar"></span> <span class="icon-bar"></span> <span
+					class="icon-bar"></span>
 			</button>
-			<a class="navbar-brand" href="/"><img alt="Charisma Logo" src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
+			<a class="navbar-brand" href="/"><img alt="Charisma Logo"
+				src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
 			<!-- user dropdown starts -->
 			<div class="btn-group pull-right">
-				<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-					<i class="glyphicon glyphicon-user"></i><span class="hidden-sm hidden-xs"> admin</span> <span class="caret"></span>
+				<button class="btn btn-default dropdown-toggle"
+					data-toggle="dropdown">
+					<i class="glyphicon glyphicon-user"></i><span
+						class="hidden-sm hidden-xs"> admin</span> <span class="caret"></span>
 				</button>
 				<ul class="dropdown-menu">
 					<li><a href="#">Profile</a></li>
@@ -116,12 +117,17 @@
 			<!-- user dropdown ends -->
 			<!-- theme selector starts -->
 			<div class="btn-group pull-right theme-container animated tada">
-				<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-					<i class="glyphicon glyphicon-tint"></i><span class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span class="caret"></span>
+				<button class="btn btn-default dropdown-toggle"
+					data-toggle="dropdown">
+					<i class="glyphicon glyphicon-tint"></i><span
+						class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span
+						class="caret"></span>
 				</button>
 				<ul class="dropdown-menu" id="themes">
-					<li><a data-value="classic" href="#"><i class="whitespace"></i> Classic</a></li>
-					<li><a data-value="slate" href="#"><i class="whitespace"></i> Slate</a></li>
+					<li><a data-value="classic" href="#"><i class="whitespace"></i>
+							Classic</a></li>
+					<li><a data-value="slate" href="#"><i class="whitespace"></i>
+							Slate</a></li>
 				</ul>
 			</div>
 			<!-- theme selector ends -->
@@ -145,16 +151,27 @@
 								<div class="box-icon"></div>
 							</div>
 							<div class="box-content" id="tubelist">
-								<table class="table table-striped table-bordered bootstrap-datatable datatable responsive dataTable" id="DataTables_Table_0" aria-describedby="DataTables_Table_0_info">
+								<table
+									class="table table-striped table-bordered bootstrap-datatable datatable responsive dataTable"
+									id="DataTables_Table_0"
+									aria-describedby="DataTables_Table_0_info">
 									<thead>
 										<tr role="row">
-											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Tube Name</th>
-											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Total Job Size</th>
-											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Finish Job Size</th>
-											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Delay Queue Size</th>
-											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Retain Queue Size</th>
-											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Failed Queue Size</th>
-											<th class="sorting" role="columnheader" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 99px;">Action</th>
+											<th class="sorting" role="columnheader" tabindex="0"
+												aria-controls="DataTables_Table_0" rowspan="1" colspan="1"
+												style="width: 99px;">Tube Name</th>
+											<th class="sorting" role="columnheader" tabindex="0"
+												aria-controls="DataTables_Table_0" rowspan="1" colspan="1"
+												style="width: 99px;">Delay Queue Size</th>
+											<th class="sorting" role="columnheader" tabindex="0"
+												aria-controls="DataTables_Table_0" rowspan="1" colspan="1"
+												style="width: 99px;">Retain Queue Size</th>
+											<th class="sorting" role="columnheader" tabindex="0"
+												aria-controls="DataTables_Table_0" rowspan="1" colspan="1"
+												style="width: 99px;">Failed Queue Size</th>
+											<th class="sorting" role="columnheader" tabindex="0"
+												aria-controls="DataTables_Table_0" rowspan="1" colspan="1"
+												style="width: 99px;">Action</th>
 										</tr>
 									</thead>
 									<tbody id="tubeStatsList">
@@ -173,11 +190,13 @@
 								</h2>
 								<div class="box-icon"></div>
 							</div>
-							<div class="box-content" id="tubelist">
+							<div class="box-content" id="tubeForm">
 								<form action="#" method="post">
-									<input name="action" value="${action}" type="hidden"> <input name="id" value="${gateway.id}" type="hidden">
 									<div class="form-group">
-										<label>Tube Name (Globe Uniqueness) <i class="glyphicon glyphicon-star red"></i></label> <input type="text" class="form-control" name="tube" id="tube" placeholder="tube must match ^([a-z]|[A-Z])(\\w|-)*">
+										<label>Tube Name (Globe Uniqueness) <i
+											class="glyphicon glyphicon-star red"></i></label> <input type="text"
+											class="form-control" name="tube" id="tube"
+											placeholder="tube must match ^([a-z]|[A-Z])(\\w|-)*">
 									</div>
 									<button type="reset" class="btn btn-default">Reset</button>
 									<button type="submit" class="btn btn-default">Submit</button>
@@ -193,7 +212,8 @@
 		<!--/fluid-row-->
 		<hr>
 		<footer class="row">
-		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019 Grape Admin</p>
+		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019 Grape
+			Admin</p>
 		<p class="col-md-3 col-sm-3 col-xs-12 powered-by">
 			Powered by: <a href="http://usman.it/free-responsive-admin-template">Charisma</a>
 		</p>

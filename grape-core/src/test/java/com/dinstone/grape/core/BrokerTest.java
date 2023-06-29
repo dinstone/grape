@@ -19,8 +19,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Test;
-
 import com.dinstone.grape.redis.PooledClient;
 
 import redis.clients.jedis.Jedis;
@@ -28,8 +26,14 @@ import redis.clients.jedis.JedisPool;
 
 public class BrokerTest {
 
+	public static void main(String[] args) {
+		try {
+			new BrokerTest().test();
+		} catch (IOException e) {
+		}
+	}
+
 	@SuppressWarnings("deprecation")
-	@Test
 	public void test() throws IOException {
 		JedisPool jedisPool = new JedisPool("192.168.1.120", 6379);
 

@@ -22,9 +22,9 @@ import org.slf4j.LoggerFactory;
 
 import io.vertx.core.logging.SLF4JLogDelegateFactory;
 
-public class GrapeLaunch {
+public class GrapeLauncher {
 
-    private static final Logger LOG = LoggerFactory.getLogger(GrapeLaunch.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GrapeLauncher.class);
 
     private static final String APPLICATION_HOME = "application.home";
 
