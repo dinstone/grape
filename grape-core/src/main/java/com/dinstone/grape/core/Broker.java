@@ -44,7 +44,7 @@ public class Broker {
 
 	private static final int DEFAULT_TTR = 1000;
 
-	private final String group;
+	private final String namespace;
 
 	private final String tubeSetKey;
 
@@ -62,7 +62,7 @@ public class Broker {
 		this(redisClient, null, Runtime.getRuntime().availableProcessors());
 	}
 
-	public Broker(RedisClient redisClient, String group, int scheduledSize) {
+	public Broker(RedisClient redisClient, String namespace, int scheduledSize) {
 		if (redisClient == null) {
 			throw new ApplicationException("redisClient is null");
 		}
@@ -70,12 +70,12 @@ public class Broker {
 			throw new ApplicationException("scheduledSize must be greater than 0");
 		}
 
-		if (group != null && !group.isEmpty()) {
-			this.group = group;
-			this.tubeSetKey = group + ":tube:set";
-			this.threadPrefix = "broker-scheduler-" + group + "-";
+		if (namespace != null && !namespace.isEmpty()) {
+			this.namespace = namespace;
+			this.tubeSetKey = namespace + ":tube:set";
+			this.threadPrefix = "broker-scheduler-" + namespace + "-";
 		} else {
-			this.group = "";
+			this.namespace = "";
 			this.tubeSetKey = "tube:set";
 			this.threadPrefix = "broker-scheduler-";
 		}
@@ -131,7 +131,7 @@ public class Broker {
 		Tube tube = tubeMap.get(tubeName);
 		if (tube == null) {
 			addTube(tubeName);
-			tube = new Tube(group, tubeName, redisClient);
+			tube = new Tube(namespace, tubeName, redisClient);
 			tubeMap.putIfAbsent(tubeName, tube);
 			tube = tubeMap.get(tubeName);
 		}
@@ -142,7 +142,7 @@ public class Broker {
 		Tube tube = tubeMap.remove(tubeName);
 		if (tube == null) {
 			if (contains(tubeName)) {
-				tube = new Tube(group, tubeName, redisClient);
+				tube = new Tube(namespace, tubeName, redisClient);
 			}
 		}
 
@@ -156,7 +156,7 @@ public class Broker {
 	}
 
 	private void addTube(String tubeName) {
-		LOG.info("add tube {}/{}", group, tubeName);
+		LOG.info("add tube {}/{}", namespace, tubeName);
 		redisClient.sadd(tubeSetKey, tubeName);
 	}
 
@@ -227,12 +227,12 @@ public class Broker {
 				try {
 					dispatch();
 				} catch (Exception e) {
-					LOG.warn("dispatch {} error: {}", group, e.getMessage());
+					LOG.warn("dispatch {} error: {}", namespace, e.getMessage());
 				}
 			}
 		}, 1, 2, TimeUnit.SECONDS);
 
-		LOG.info("Broker[{}] is started", group);
+		LOG.info("Broker[{}] is started", namespace);
 		return this;
 	}
 
@@ -242,7 +242,7 @@ public class Broker {
 			executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.HOURS);
 		} catch (InterruptedException e) {
 		}
-		LOG.info("Broker[{}] is shutdown", group);
+		LOG.info("Broker[{}] is shutdown", namespace);
 		return this;
 	}
 

@@ -80,13 +80,13 @@ public class Tube {
 
 	private final RedisLock scheduleLock;
 
-	public Tube(String group, String tubeName, RedisClient redisClient) {
+	public Tube(String namespace, String tubeName, RedisClient redisClient) {
 		this.redisClient = redisClient;
 		this.tubeName = tubeName;
 
 		String tubePrefix;
-		if (group != null && !group.isEmpty()) {
-			tubePrefix = group + ":tube:";
+		if (namespace != null && !namespace.isEmpty()) {
+			tubePrefix = namespace + ":tube:";
 		} else {
 			tubePrefix = "tube:";
 		}
@@ -447,7 +447,7 @@ public class Tube {
 		res.put(JOB_ID, job.getId());
 		res.put(JOB_DTR, Long.toString(job.getDtr()));
 		res.put(JOB_TTR, Long.toString(job.getTtr()));
-		res.put(JOB_NOE, Long.toString(job.getNoe()));
+		res.put(JOB_NOE, Integer.toString(job.getNoe()));
 		res.put(JOB_DATA, encode(job.getData()));
 		return res;
 	}
@@ -468,7 +468,7 @@ public class Tube {
 		}
 		String noe = map.get(JOB_NOE);
 		if (noe != null) {
-			job.setNoe(Long.parseLong(noe));
+			job.setNoe(Integer.parseInt(noe));
 		}
 		String data = map.get(JOB_DATA);
 		if (data != null) {

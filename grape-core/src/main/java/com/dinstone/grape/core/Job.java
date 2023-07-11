@@ -19,86 +19,91 @@ import java.io.Serializable;
 
 public class Job implements Serializable {
 
-    /**
-     * 
-     */
-    private static final long serialVersionUID = 1L;
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 
-    /**
-     * job id
-     */
-    private String id;
+	/**
+	 * job id
+	 */
+	private String id;
 
-    /**
-     * delay to run
-     */
-    private long dtr;
+	/**
+	 * delay to ready
+	 */
+	private long dtr;
 
-    /**
-     * time to run
-     */
-    private long ttr;
+	/**
+	 * time to run
+	 */
+	private long ttr;
 
-    /**
-     * number of executions
-     */
-    private long noe;
+	/**
+	 * number of executions
+	 */
+	private int noe;
 
-    /**
-     * job content
-     */
-    private byte[] data;
+	/**
+	 * job content
+	 */
+	private byte[] data;
 
-    public Job() {
-        super();
-    }
+	public Job() {
+		super();
+	}
 
-    public Job(String id, long dtr, long ttr, byte[] data) {
-        super();
-        this.id = id;
-        this.dtr = dtr;
-        this.ttr = ttr;
-        this.data = data;
-    }
+	public Job(String id, long dtr, long ttr, byte[] data) {
+		super();
+		this.id = id;
+		this.dtr = dtr;
+		this.ttr = ttr;
+		this.data = data;
+	}
 
-    public String getId() {
-        return id;
-    }
+	public String getId() {
+		return id;
+	}
 
-    public void setId(String id) {
-        this.id = id;
-    }
+	public void setId(String id) {
+		this.id = id;
+	}
 
-    public long getDtr() {
-        return dtr;
-    }
+	public long getDtr() {
+		return dtr;
+	}
 
-    public void setDtr(long dtr) {
-        this.dtr = dtr;
-    }
+	public void setDtr(long dtr) {
+		this.dtr = dtr;
+	}
 
-    public long getTtr() {
-        return ttr;
-    }
+	public long getTtr() {
+		return ttr;
+	}
 
-    public void setTtr(long ttr) {
-        this.ttr = ttr;
-    }
+	public void setTtr(long ttr) {
+		this.ttr = ttr;
+	}
 
-    public byte[] getData() {
-        return data;
-    }
+	public byte[] getData() {
+		return data;
+	}
 
-    public void setData(byte[] data) {
-        this.data = data;
-    }
+	public void setData(byte[] data) {
+		this.data = data;
+	}
 
-    public long getNoe() {
-        return noe;
-    }
+	public int getNoe() {
+		return noe;
+	}
 
-    public void setNoe(long noe) {
-        this.noe = noe;
-    }
+	public void setNoe(int noe) {
+		this.noe = noe;
+	}
+
+	@Override
+	public String toString() {
+		return "Job [id=" + id + ", dtr=" + dtr + ", ttr=" + ttr + ", noe=" + noe + "]";
+	}
 
 }

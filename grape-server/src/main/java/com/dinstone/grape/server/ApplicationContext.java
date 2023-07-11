@@ -51,10 +51,10 @@ public class ApplicationContext implements Shareable {
 		if (brokerConfig == null) {
 			this.broker = new Broker(redisClient).start();
 		} else {
-			String group = brokerConfig.getString("group");
+			String namespace = brokerConfig.getString("namespace");
 			int defaultSize = Runtime.getRuntime().availableProcessors();
 			int scheduledSize = brokerConfig.getInteger("scheduledSize", defaultSize);
-			this.broker = new Broker(redisClient, group, scheduledSize).start();
+			this.broker = new Broker(redisClient, namespace, scheduledSize).start();
 		}
 
 		authenProvider = new LocalAuthenProvider(config.getJsonObject("users"));

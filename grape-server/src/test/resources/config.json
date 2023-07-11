@@ -13,7 +13,7 @@
 		"rest.port": 9521
 	},
 	"broker": {
-		"group": "grape",
+		"namespace": "grape",
 		"scheduledSize": 4
 	},
 	"redis": {
