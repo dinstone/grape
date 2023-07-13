@@ -215,8 +215,8 @@ public class Broker {
 		return loadTube(tubeName).release(jobId, dtr);
 	}
 
-	public boolean failure(String tubeName, String jobId) {
-		return loadTube(tubeName).failure(jobId);
+	public boolean bury(String tubeName, String jobId) {
+		return loadTube(tubeName).bury(jobId);
 	}
 
 	public Broker start() {

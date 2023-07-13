@@ -33,297 +33,323 @@ import io.vertx.ext.web.RoutingContext;
 @Produces({ "application/json" })
 public class JobApiHandler extends RestApiHandler {
 
-    public JobApiHandler(ApplicationContext context) {
-        super(context);
-    }
+	public JobApiHandler(ApplicationContext context) {
+		super(context);
+	}
 
-    @Post("/produce")
-    public void produce(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+	@Post("/produce")
+	public void produce(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-        String id = ctx.request().getParam("id");
-        if (id == null || id.length() == 0) {
-            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-            return;
-        }
+		String id = ctx.request().getParam("id");
+		if (id == null || id.length() == 0) {
+			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
+			return;
+		}
 
-        long dtr = 0;
-        if (ctx.request().getParam("dtr") != null) {
-            try {
-                dtr = Long.parseLong(ctx.request().getParam("dtr"));
-            } catch (Exception e) {
-                failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
-                return;
-            }
-        }
+		long dtr = 0;
+		if (ctx.request().getParam("dtr") != null) {
+			try {
+				dtr = Long.parseLong(ctx.request().getParam("dtr"));
+			} catch (Exception e) {
+				failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
+				return;
+			}
+		}
 
-        long ttr = 0;
-        if (ctx.request().getParam("ttr") != null) {
-            try {
-                ttr = Long.parseLong(ctx.request().getParam("ttr"));
-            } catch (Exception e) {
-                failed(ctx, ValidErrorCode.JOB_TTR_INVALID, "job ttr is invalid");
-                return;
-            }
-        }
+		long ttr = 0;
+		if (ctx.request().getParam("ttr") != null) {
+			try {
+				ttr = Long.parseLong(ctx.request().getParam("ttr"));
+			} catch (Exception e) {
+				failed(ctx, ValidErrorCode.JOB_TTR_INVALID, "job ttr is invalid");
+				return;
+			}
+		}
 
-        byte[] data = ctx.getBody().getBytes();
-        Job job = new Job(id, dtr, ttr, data);
+		byte[] data = ctx.getBody().getBytes();
+		Job job = new Job(id, dtr, ttr, data);
 
-        ctx.vertx().executeBlocking(future -> {
-            future.complete(broker.produce(tubeName, job));
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
+		ctx.vertx().executeBlocking(future -> {
+			future.complete(broker.produce(tubeName, job));
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
 
-    }
+	}
 
-    @Delete("/delete")
-    public void delete(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+	@Delete("/delete")
+	public void delete(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-        String id = ctx.request().getParam("id");
-        if (id == null || id.length() == 0) {
-            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-            return;
-        }
+		String id = ctx.request().getParam("id");
+		if (id == null || id.length() == 0) {
+			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
+			return;
+		}
 
-        ctx.vertx().executeBlocking(future -> {
-            future.complete(broker.delete(tubeName, id));
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+		ctx.vertx().executeBlocking(future -> {
+			future.complete(broker.delete(tubeName, id));
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-    @Get("/consume")
-    public void consume(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+	@Get("/consume")
+	public void consume(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-        int maxParam = 1;
-        try {
-            String param = ctx.request().getParam("max");
-            if (param != null && param.length() > 0) {
-                maxParam = Integer.parseInt(param);
-            }
-        } catch (Exception e) {
-            // ignore
-        }
+		int maxParam = 1;
+		try {
+			String param = ctx.request().getParam("max");
+			if (param != null && param.length() > 0) {
+				maxParam = Integer.parseInt(param);
+			}
+		} catch (Exception e) {
+			// ignore
+		}
 
-        final int maxCount = maxParam;
-        ctx.vertx().executeBlocking(future -> {
-            List<Job> jobs = broker.consume(tubeName, maxCount);
-            future.complete(jobs);
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+		final int maxCount = maxParam;
+		ctx.vertx().executeBlocking(future -> {
+			List<Job> jobs = broker.consume(tubeName, maxCount);
+			future.complete(jobs);
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-    @Delete("/finish")
-    public void finish(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+	@Delete("/finish")
+	public void finish(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-        String id = ctx.request().getParam("id");
-        if (id == null || id.length() == 0) {
-            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-            return;
-        }
+		String id = ctx.request().getParam("id");
+		if (id == null || id.length() == 0) {
+			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
+			return;
+		}
 
-        ctx.vertx().executeBlocking(future -> {
-            future.complete(broker.finish(tubeName, id));
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+		ctx.vertx().executeBlocking(future -> {
+			future.complete(broker.finish(tubeName, id));
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-    @Put("/release")
-    public void release(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+	@Put("/release")
+	public void release(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-        String id = ctx.request().getParam("id");
-        if (id == null || id.length() == 0) {
-            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-            return;
-        }
+		String id = ctx.request().getParam("id");
+		if (id == null || id.length() == 0) {
+			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
+			return;
+		}
 
-        long dtr = 0;
-        if (ctx.request().getParam("dtr") != null) {
-            try {
-                dtr = Long.parseLong(ctx.request().getParam("dtr"));
-            } catch (Exception e) {
-                failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
-                return;
-            }
-        }
+		long dtr = 0;
+		if (ctx.request().getParam("dtr") != null) {
+			try {
+				dtr = Long.parseLong(ctx.request().getParam("dtr"));
+			} catch (Exception e) {
+				failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
+				return;
+			}
+		}
 
-        final long dtrParam = dtr;
-        ctx.vertx().executeBlocking(future -> {
-            future.complete(broker.release(tubeName, id, dtrParam));
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
+		final long dtrParam = dtr;
+		ctx.vertx().executeBlocking(future -> {
+			future.complete(broker.release(tubeName, id, dtrParam));
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
 
-    }
+	}
 
-    @Put("/failure")
-    public void failure(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+	@Deprecated
+	@Put("/failure")
+	public void failure(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-        String id = ctx.request().getParam("id");
-        if (id == null || id.length() == 0) {
-            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-            return;
-        }
+		String id = ctx.request().getParam("id");
+		if (id == null || id.length() == 0) {
+			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
+			return;
+		}
 
-        ctx.vertx().executeBlocking(future -> {
-            future.complete(broker.failure(tubeName, id));
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+		ctx.vertx().executeBlocking(future -> {
+			future.complete(broker.bury(tubeName, id));
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-    @Get("/peek")
-    public void peek(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+	@Put("/bury")
+	public void bury(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-        long maxParam = 1;
-        try {
-            String param = ctx.request().getParam("max");
-            if (param != null && param.length() > 0) {
-                maxParam = Long.parseLong(param);
-            }
-        } catch (Exception e) {
-            // ignore
-        }
+		String id = ctx.request().getParam("id");
+		if (id == null || id.length() == 0) {
+			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
+			return;
+		}
 
-        final long maxCount = maxParam;
-        ctx.vertx().executeBlocking(future -> {
-            List<Job> jobs = broker.peek(tubeName, maxCount);
-            future.complete(jobs);
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+		ctx.vertx().executeBlocking(future -> {
+			future.complete(broker.bury(tubeName, id));
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-    @Put("/kick")
-    public void kick(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+	@Get("/peek")
+	public void peek(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-        String id = ctx.request().getParam("id");
-        if (id == null || id.length() == 0) {
-            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-            return;
-        }
+		long maxParam = 1;
+		try {
+			String param = ctx.request().getParam("max");
+			if (param != null && param.length() > 0) {
+				maxParam = Long.parseLong(param);
+			}
+		} catch (Exception e) {
+			// ignore
+		}
 
-        long dtr = 0;
-        if (ctx.request().getParam("dtr") != null) {
-            try {
-                dtr = Long.parseLong(ctx.request().getParam("dtr"));
-            } catch (Exception e) {
-                failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
-                return;
-            }
-        }
+		final long maxCount = maxParam;
+		ctx.vertx().executeBlocking(future -> {
+			List<Job> jobs = broker.peek(tubeName, maxCount);
+			future.complete(jobs);
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
-        final long dtrParam = dtr;
-        ctx.vertx().executeBlocking(future -> {
-            try {
-                future.complete(broker.kick(tubeName, id, dtrParam));
-            } catch (Exception e) {
-                future.fail(e);
-            }
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
+	@Put("/kick")
+	public void kick(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
 
-    }
+		String id = ctx.request().getParam("id");
+		if (id == null || id.length() == 0) {
+			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
+			return;
+		}
 
-    @Delete("/discard")
-    public void discard(@Context RoutingContext ctx) {
-        String tubeName = ctx.request().getParam("tube");
-        if (tubeName == null || tubeName.length() == 0) {
-            failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-            return;
-        }
+		long dtr = 0;
+		if (ctx.request().getParam("dtr") != null) {
+			try {
+				dtr = Long.parseLong(ctx.request().getParam("dtr"));
+			} catch (Exception e) {
+				failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
+				return;
+			}
+		}
 
-        String id = ctx.request().getParam("id");
-        if (id == null || id.length() == 0) {
-            failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-            return;
-        }
+		final long dtrParam = dtr;
+		ctx.vertx().executeBlocking(future -> {
+			try {
+				future.complete(broker.kick(tubeName, id, dtrParam));
+			} catch (Exception e) {
+				future.fail(e);
+			}
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
 
-        ctx.vertx().executeBlocking(future -> {
-            future.complete(broker.discard(tubeName, id));
-        }, false, ar -> {
-            if (ar.succeeded()) {
-                success(ctx, ar.result());
-            } else {
-                failed(ctx, ar.cause());
-            }
-        });
-    }
+	}
+
+	@Delete("/discard")
+	public void discard(@Context RoutingContext ctx) {
+		String tubeName = ctx.request().getParam("tube");
+		if (tubeName == null || tubeName.length() == 0) {
+			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
+			return;
+		}
+
+		String id = ctx.request().getParam("id");
+		if (id == null || id.length() == 0) {
+			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
+			return;
+		}
+
+		ctx.vertx().executeBlocking(future -> {
+			future.complete(broker.discard(tubeName, id));
+		}, false, ar -> {
+			if (ar.succeeded()) {
+				success(ctx, ar.result());
+			} else {
+				failed(ctx, ar.cause());
+			}
+		});
+	}
 
 }

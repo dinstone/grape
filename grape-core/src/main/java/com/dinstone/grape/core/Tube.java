@@ -187,7 +187,7 @@ public class Tube {
 		long expiredTime = System.currentTimeMillis() + timeout;
 		while (true) {
 			long currentTime = System.currentTimeMillis();
-			if (currentTime > expiredTime) {
+			if (currentTime >= expiredTime) {
 				break;
 			}
 
@@ -198,14 +198,16 @@ public class Tube {
 			}
 
 			for (String jobId : jobSet) {
-				String dtr = redisClient.hget(jobPrefix + jobId, JOB_DTR);
-				if (dtr == null) {
+				String ttr = redisClient.hget(jobPrefix + jobId, JOB_TTR);
+				if (ttr == null) {
 					LOG.warn("job[{}:{}] is invalid, remove from retain queue.", tubeName, jobId);
 					redisClient.zrem(retainQueue, jobId);
 					continue;
 				}
+				// for ready queue
+				long readyTime = currentTime - Long.parseLong(ttr);
 
-				redisClient.zadd(delayQueue, currentTime, jobId);
+				redisClient.zadd(delayQueue, readyTime, jobId);
 				redisClient.zrem(retainQueue, jobId);
 			}
 		}
@@ -300,7 +302,7 @@ public class Tube {
 				}
 
 				// check date limit
-				if (currentTime > expiredTime) {
+				if (currentTime >= expiredTime) {
 					break;
 				}
 			}
@@ -357,19 +359,26 @@ public class Tube {
 	 * 
 	 * @return
 	 */
-	public boolean failure(String jobId) {
+	public boolean bury(String jobId) {
+		// check retain queue has job
 		if (redisClient.zscore(retainQueue, jobId) == null) {
 			return false;
 		}
 
-		if (redisClient.exists(jobPrefix + jobId)) {
-			double score = System.currentTimeMillis();
-			redisClient.zadd(failedQueue, score, jobId);
+		// check job exist
+		String dtr = redisClient.hget(jobPrefix + jobId, JOB_DTR);
+		if (dtr == null) {
+			LOG.warn("job[{}:{}] is invalid, remove from retain queue.", tubeName, jobId);
 			redisClient.zrem(retainQueue, jobId);
-			return true;
+			return false;
 		}
 
-		return false;
+		// for submit time
+		long submitTime = System.currentTimeMillis() - Long.parseLong(dtr);
+
+		redisClient.zadd(failedQueue, submitTime, jobId);
+		redisClient.zrem(retainQueue, jobId);
+		return true;
 	}
 
 	/**
@@ -447,7 +456,7 @@ public class Tube {
 		res.put(JOB_ID, job.getId());
 		res.put(JOB_DTR, Long.toString(job.getDtr()));
 		res.put(JOB_TTR, Long.toString(job.getTtr()));
-		res.put(JOB_NOE, Integer.toString(job.getNoe()));
+		res.put(JOB_NOE, Long.toString(job.getNoe()));
 		res.put(JOB_DATA, encode(job.getData()));
 		return res;
 	}
@@ -468,7 +477,7 @@ public class Tube {
 		}
 		String noe = map.get(JOB_NOE);
 		if (noe != null) {
-			job.setNoe(Integer.parseInt(noe));
+			job.setNoe(Long.parseLong(noe));
 		}
 		String data = map.get(JOB_DATA);
 		if (data != null) {

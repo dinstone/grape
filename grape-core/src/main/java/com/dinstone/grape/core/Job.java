@@ -42,7 +42,7 @@ public class Job implements Serializable {
 	/**
 	 * number of executions
 	 */
-	private int noe;
+	private long noe;
 
 	/**
 	 * job content
@@ -93,11 +93,11 @@ public class Job implements Serializable {
 		this.data = data;
 	}
 
-	public int getNoe() {
+	public long getNoe() {
 		return noe;
 	}
 
-	public void setNoe(int noe) {
+	public void setNoe(Long noe) {
 		this.noe = noe;
 	}
 

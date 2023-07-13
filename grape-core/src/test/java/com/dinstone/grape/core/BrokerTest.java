@@ -78,7 +78,7 @@ public class BrokerTest {
 		broker.finish(tubeName, job.getId());
 
 		job = jobs.get(1);
-		broker.failure(tubeName, job.getId());
+		broker.bury(tubeName, job.getId());
 
 		job = jobs.get(2);
 		broker.release(tubeName, job.getId(), 2000);
