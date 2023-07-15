@@ -44,11 +44,11 @@ public class AuthenApiHandler extends RestApiHandler {
         String un = params.getString("username");
         String pw = params.getString("password");
         if (un == null || un.isEmpty()) {
-            failed(ctx, ValidErrorCode.USERNAME_EMPTY, "Username is empty");
+            failed(ctx, AuthenErrorCode.USERNAME_EMPTY, "username is empty");
             return;
         }
         if (pw == null || pw.isEmpty()) {
-            failed(ctx, ValidErrorCode.PASSWORD_EMPTY, "Password is empty");
+            failed(ctx, AuthenErrorCode.PASSWORD_EMPTY, "password is empty");
             return;
         }
 
@@ -57,7 +57,7 @@ public class AuthenApiHandler extends RestApiHandler {
             ctx.session().put("user", user);
             success(ctx, ctx.session().id());
         } else {
-            failed(ctx, ValidErrorCode.AUTHEN_INVALID, "username or password is error");
+            failed(ctx, AuthenErrorCode.AUTHEN_INVALID, "username or password is error");
         }
 
     }

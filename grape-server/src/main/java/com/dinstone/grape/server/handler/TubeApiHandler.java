@@ -40,13 +40,8 @@ public class TubeApiHandler extends RestApiHandler {
 
 	@Post("/create")
 	public void create(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
 		ctx.vertx().executeBlocking(future -> {
+			String tubeName = ctx.request().getParam("tube");
 			broker.createTube(tubeName);
 			future.complete(true);
 		}, false, ar -> {
@@ -60,13 +55,8 @@ public class TubeApiHandler extends RestApiHandler {
 
 	@Post("/delete")
 	public void delete(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
 		ctx.vertx().executeBlocking(future -> {
+			String tubeName = ctx.request().getParam("tube");
 			broker.deleteTube(tubeName);
 			future.complete(true);
 		}, false, ar -> {
@@ -78,8 +68,8 @@ public class TubeApiHandler extends RestApiHandler {
 		});
 	}
 
-	@Get("/set")
-	public void set(@Context RoutingContext ctx) {
+	@Get("/list")
+	public void list(@Context RoutingContext ctx) {
 		ctx.vertx().executeBlocking(future -> {
 			future.complete(broker.tubeSet());
 		}, false, ar -> {
@@ -111,10 +101,6 @@ public class TubeApiHandler extends RestApiHandler {
 
 	@Get("/stats/:tubeName")
 	public void stats(@Context RoutingContext ctx, @PathParam("tubeName") String tubeName) {
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
 		ctx.vertx().executeBlocking(future -> {
 			future.complete(broker.stats(tubeName));
 		}, false, ar -> {

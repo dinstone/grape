@@ -2,12 +2,14 @@
 
 Grape is a distributed delay job system based on Redis.
 
+[真正的千万级分布式延迟任务系统 Grape](https://dinstone.github.io/2023/07/07/delay-task-with-redis/)
+
 ## Job Lifecycle
 
-A job in Grape during its life it can be in one of four states: "delay", "ready", "reserved", or "failed".
+A job in Grape during its life it can be in one of four states: "delay", "ready", "remain", or "failed".
 
 Here is a picture of the typical job lifecycle:
-![image](https://github.com/dinstone/grape/wiki/images/DelayJobStatemachine.png)
+![image](https://dinstone.github.io/img/arch/grape-status.png)
 
 ## Admin UI
 Access grape admin endpoint: http://localhost:9595/
@@ -18,11 +20,13 @@ Access grape admin endpoint: http://localhost:9595/
 
 ## Releases
 
+* [1.3.1] improve API and bugfix.
+
 * [1.3.0](https://github.com/dinstone/grape/releases/tag/1.3.0) support redis cluster model.
 
 * [1.2.2](https://github.com/dinstone/grape/releases/tag/1.2.2)  is a stable version of 1.2 and has fixed several bugs.
 
-* 1.2.0 optimized the scheduling model and supports zero delay scheduling algorithms
+* 1.3.1 optimized the scheduling model and supports zero delay scheduling algorithms
 
 * 1.1.0 add admin web UI project.
 
@@ -126,125 +130,113 @@ edit users info from user.json file.
 ## step 4: start grape by script
 
 ```
-cd grape-server-1.2.0/bin
+cd grape-server-1.3.1/bin
 ./start.sh
 ```
 
 ## step 5: stop grape by script
 
 ```
-cd grape-server-1.2.0/bin
+cd grape-server-1.3.1/bin
 ./stop.sh
 ```
 
 # API and Examples
 
-This here can find [API Definition](https://documenter.getpostman.com/view/8030511/SVYoufE8)
+You can find the complete [API Definition](https://documenter.getpostman.com/view/8030511/SVYoufE8) here.
 
 ### Produce API
+
 ```
 Example Request
-curl --location --request POST "http://localhost:9521/api/job/produce?tube=test&id=j001&dtr=2000&ttr=10000" \
-  --header "Content-Type: application/json" \
-  --data "{
-    \"command\": \"create order\",
-    \"order\": \"order body\"
-}"
+curl --location 'http://localhost:9521/api/job/produce?tube=test&jid=j004&dtr=1000&ttr=10000' \
+--header 'Content-Type: application/json' \
+--data '{
+    "orderId": "j001",
+    "sumMoney": 2000,
+    "count": 10000
+}'
 
 Example Response 200 － OK
-{
-  "code": "1",
-  "message": "success"
-}
+true
 ```
+
 ### Delete API
+
 ```
 Example Request
-curl --location --request DELETE "http://localhost:9521/api/job/delete?tube=test&id=j001" \
-  --header "Content-Type: application/json"
+curl --location --request DELETE 'http://localhost:9521/api/job/delete?tube=test&jid=j001'
+
 Example Response200 OK
-{
-  "code": "1",
-  "message": "success",
-  "result": false
-}
+true
 ```
+
 ### Consume API
+
 ```
 Example Request
-curl --location --request GET "http://localhost:9521/api/job/consume?tube=test&max=10" \
-  --header "Content-Type: application/json"
+curl --location 'http://localhost:9521/api/job/consume?tube=test&max=10'
+
 Example Response200 OK
-{
-  "code": "1",
-  "message": "success",
-  "result": [
+[
     {
-      "id": "j001",
-      "dtr": 2000,
-      "ttr": 10000,
-      "noe": 1,
-      "data": "ewogICAgImNvbW1hbmQiOiAiY3JlYXRlIG9yZGVyIiwKICAgICJvcmRlciI6ICJvcmRlciBib2R5Igp9"
+        "id": "j004",
+        "dtr": 1000,
+        "ttr": 10000,
+        "noe": 0,
+        "data": "ewogICAgIm9yZGVySWQiOiAiajAwMSIsCiAgICAic3VtTW9uZXkiOiAyMDAwLAogICAgImNvdW50IjogMTAwMDAKfQ"
     }
-  ]
-}
+]
 ```
+
 ### Finish API
+
 ```
 Example Request
-curl --location --request DELETE "http://localhost:9521/api/job/finish?tube=test&id=j001" \
-  --header "Content-Type: application/json"
+curl --location --request DELETE 'http://localhost:9521/api/job/finish?tube=test&jid=j003'
+
 Example Response200 OK
-{
-  "code": "1",
-  "message": "success",
-  "result": false
-}
+true
 ```
+
 ### Release API
+
 ```
 Example Request
-curl --location --request PUT "http://localhost:9521/api/job/release?tube=test&id=j001&dtr=2000" \
-  --header "Content-Type: application/json"
+curl --location --request PUT 'http://localhost:9521/api/job/release?tube=test&jid=j001&dtr=20000'
+
 Example Response200 OK
-{
-  "code": "1",
-  "message": "success",
-  "result": false
-}
+true
 ```
-### Tube Set API
+
+### Tube list API
+
 ```
 Example Request
-curl --location --request GET "http://localhost:9521/api/tube/set" \
-  --header "Content-Type: application/json"
+curl --location 'http://localhost:9521/api/tube/list'
+
 Example Response200 OK
-{
-  "code": "1",
-  "message": "success",
-  "result": [
+[
     "test"
-  ]
-}
+]
 ```
+
 ### Tube Stats API
+
 ```
 Example Request
-curl --location --request GET "http://localhost:9521/api/tube/stats/test" \
-  --header "Content-Type: application/json"
+curl --location 'http://localhost:9521/api/tube/stats'
+
 Example Response200 OK
-{
-  "code": "1",
-  "message": "success",
-  "result": {
-    "dateTime": 1564712682507,
-    "tubeName": "test",
-    "totalJobSize": 3,
-    "finishJobSize": 0,
-    "delayQueueSize": 0,
-    "readyQueueSize": 1,
-    "retainQueueSize": 0,
-    "failedQueueSize": 0
-  }
-}
+[
+    {
+        "dateTime": 1689390610122,
+        "tubeName": "test",
+        "totalJobSize": 0,
+        "finishJobSize": 0,
+        "delayQueueSize": 0,
+        "retainQueueSize": 0,
+        "failedQueueSize": 1
+    }
+]
 ```

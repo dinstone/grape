@@ -41,11 +41,7 @@
 		}
 
 		$.post("/api/tube/delete?tube=" + tubeName, function(data, status) {
-			if (data.code == 0) {
-				$(location).attr('href', "/index.html");
-			} else {
-				$("#tip").html(data.desc);
-			}
+			$(location).attr('href', "/index.html");
 		}, "json");
 	}
 
@@ -53,12 +49,10 @@
 
 		// load stats
 		$.getJSON("/api/tube/stats", function(data, status) {
-			if (data.code == 0) {
-				if (data.data) {
-					$.each(data.data, function(i, ts) {
-						createRow(ts);
-					});
-				}
+			if (data) {
+				$.each(data, function(i, ts) {
+					createRow(ts);
+				});
 			}
 		});
 
@@ -81,10 +75,8 @@
 			}
 
 			$.post("/api/tube/create?tube=" + tn, function(data, status) {
-				if (data.code == 0) {
+				if (data) {
 					$(location).attr('href', "/index.html");
-				} else {
-					$("#tip").html(data.desc);
 				}
 			}, "json");
 		});
@@ -162,13 +154,13 @@
 												style="width: 99px;">Tube Name</th>
 											<th class="sorting" role="columnheader" tabindex="0"
 												aria-controls="DataTables_Table_0" rowspan="1" colspan="1"
-												style="width: 99px;">Delay Queue Size</th>
+												style="width: 99px;">Delay Size</th>
 											<th class="sorting" role="columnheader" tabindex="0"
 												aria-controls="DataTables_Table_0" rowspan="1" colspan="1"
-												style="width: 99px;">Retain Queue Size</th>
+												style="width: 99px;">Retain Size</th>
 											<th class="sorting" role="columnheader" tabindex="0"
 												aria-controls="DataTables_Table_0" rowspan="1" colspan="1"
-												style="width: 99px;">Failed Queue Size</th>
+												style="width: 99px;">Failed Size</th>
 											<th class="sorting" role="columnheader" tabindex="0"
 												aria-controls="DataTables_Table_0" rowspan="1" colspan="1"
 												style="width: 99px;">Action</th>
@@ -212,7 +204,7 @@
 		<!--/fluid-row-->
 		<hr>
 		<footer class="row">
-		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019 Grape
+		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019~2023 Grape
 			Admin</p>
 		<p class="col-md-3 col-sm-3 col-xs-12 powered-by">
 			Powered by: <a href="http://usman.it/free-responsive-admin-template">Charisma</a>

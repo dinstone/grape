@@ -18,6 +18,8 @@ package com.dinstone.grape.server.handler;
 import java.util.List;
 
 import com.dinstone.grape.core.Job;
+import com.dinstone.grape.exception.BusinessException;
+import com.dinstone.grape.exception.JobErrorCode;
 import com.dinstone.grape.server.ApplicationContext;
 import com.dinstone.vertx.web.annotation.Context;
 import com.dinstone.vertx.web.annotation.Delete;
@@ -40,23 +42,15 @@ public class JobApiHandler extends RestApiHandler {
 	@Post("/produce")
 	public void produce(@Context RoutingContext ctx) {
 		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
 
-		String id = ctx.request().getParam("id");
-		if (id == null || id.length() == 0) {
-			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-			return;
-		}
+		String jid = ctx.request().getParam("jid");
 
 		long dtr = 0;
 		if (ctx.request().getParam("dtr") != null) {
 			try {
 				dtr = Long.parseLong(ctx.request().getParam("dtr"));
 			} catch (Exception e) {
-				failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
+				failed(ctx, JobErrorCode.DTR_INVALID, "job dtr is invalid");
 				return;
 			}
 		}
@@ -66,13 +60,13 @@ public class JobApiHandler extends RestApiHandler {
 			try {
 				ttr = Long.parseLong(ctx.request().getParam("ttr"));
 			} catch (Exception e) {
-				failed(ctx, ValidErrorCode.JOB_TTR_INVALID, "job ttr is invalid");
+				failed(ctx, JobErrorCode.TTR_INVALID, "job ttr is invalid");
 				return;
 			}
 		}
 
 		byte[] data = ctx.getBody().getBytes();
-		Job job = new Job(id, dtr, ttr, data);
+		Job job = new Job(jid, dtr, ttr, data);
 
 		ctx.vertx().executeBlocking(future -> {
 			future.complete(broker.produce(tubeName, job));
@@ -88,20 +82,10 @@ public class JobApiHandler extends RestApiHandler {
 
 	@Delete("/delete")
 	public void delete(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
-		String id = ctx.request().getParam("id");
-		if (id == null || id.length() == 0) {
-			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-			return;
-		}
-
 		ctx.vertx().executeBlocking(future -> {
-			future.complete(broker.delete(tubeName, id));
+			String tubeName = ctx.request().getParam("tube");
+			String jobId = ctx.request().getParam("jid");
+			future.complete(broker.delete(tubeName, jobId));
 		}, false, ar -> {
 			if (ar.succeeded()) {
 				success(ctx, ar.result());
@@ -113,25 +97,18 @@ public class JobApiHandler extends RestApiHandler {
 
 	@Get("/consume")
 	public void consume(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
-		int maxParam = 1;
-		try {
-			String param = ctx.request().getParam("max");
-			if (param != null && param.length() > 0) {
-				maxParam = Integer.parseInt(param);
-			}
-		} catch (Exception e) {
-			// ignore
-		}
-
-		final int maxCount = maxParam;
 		ctx.vertx().executeBlocking(future -> {
-			List<Job> jobs = broker.consume(tubeName, maxCount);
+			int maxParam = 1;
+			try {
+				String param = ctx.request().getParam("max");
+				if (param != null && param.length() > 0) {
+					maxParam = Integer.parseInt(param);
+				}
+			} catch (Exception e) {
+				// ignore
+			}
+			String tubeName = ctx.request().getParam("tube");
+			List<Job> jobs = broker.consume(tubeName, maxParam);
 			future.complete(jobs);
 		}, false, ar -> {
 			if (ar.succeeded()) {
@@ -144,20 +121,10 @@ public class JobApiHandler extends RestApiHandler {
 
 	@Delete("/finish")
 	public void finish(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
-		String id = ctx.request().getParam("id");
-		if (id == null || id.length() == 0) {
-			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-			return;
-		}
-
 		ctx.vertx().executeBlocking(future -> {
-			future.complete(broker.finish(tubeName, id));
+			String tubeName = ctx.request().getParam("tube");
+			String jobid = ctx.request().getParam("jid");
+			future.complete(broker.finish(tubeName, jobid));
 		}, false, ar -> {
 			if (ar.succeeded()) {
 				success(ctx, ar.result());
@@ -169,31 +136,20 @@ public class JobApiHandler extends RestApiHandler {
 
 	@Put("/release")
 	public void release(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
-		String id = ctx.request().getParam("id");
-		if (id == null || id.length() == 0) {
-			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-			return;
-		}
-
-		long dtr = 0;
-		if (ctx.request().getParam("dtr") != null) {
-			try {
-				dtr = Long.parseLong(ctx.request().getParam("dtr"));
-			} catch (Exception e) {
-				failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
-				return;
-			}
-		}
-
-		final long dtrParam = dtr;
 		ctx.vertx().executeBlocking(future -> {
-			future.complete(broker.release(tubeName, id, dtrParam));
+			String tubeName = ctx.request().getParam("tube");
+			String jobid = ctx.request().getParam("jid");
+
+			long dtr = 0;
+			if (ctx.request().getParam("dtr") != null) {
+				try {
+					dtr = Long.parseLong(ctx.request().getParam("dtr"));
+				} catch (Exception e) {
+					throw new BusinessException(JobErrorCode.DTR_INVALID, "job dtr is invalid");
+				}
+			}
+
+			future.complete(broker.release(tubeName, jobid, dtr));
 		}, false, ar -> {
 			if (ar.succeeded()) {
 				success(ctx, ar.result());
@@ -207,45 +163,15 @@ public class JobApiHandler extends RestApiHandler {
 	@Deprecated
 	@Put("/failure")
 	public void failure(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
-		String id = ctx.request().getParam("id");
-		if (id == null || id.length() == 0) {
-			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-			return;
-		}
-
-		ctx.vertx().executeBlocking(future -> {
-			future.complete(broker.bury(tubeName, id));
-		}, false, ar -> {
-			if (ar.succeeded()) {
-				success(ctx, ar.result());
-			} else {
-				failed(ctx, ar.cause());
-			}
-		});
+		bury(ctx);
 	}
 
 	@Put("/bury")
 	public void bury(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
-		String id = ctx.request().getParam("id");
-		if (id == null || id.length() == 0) {
-			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-			return;
-		}
-
 		ctx.vertx().executeBlocking(future -> {
-			future.complete(broker.bury(tubeName, id));
+			String tubeName = ctx.request().getParam("tube");
+			String jobid = ctx.request().getParam("jid");
+			future.complete(broker.bury(tubeName, jobid));
 		}, false, ar -> {
 			if (ar.succeeded()) {
 				success(ctx, ar.result());
@@ -257,25 +183,19 @@ public class JobApiHandler extends RestApiHandler {
 
 	@Get("/peek")
 	public void peek(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
-		long maxParam = 1;
-		try {
-			String param = ctx.request().getParam("max");
-			if (param != null && param.length() > 0) {
-				maxParam = Long.parseLong(param);
-			}
-		} catch (Exception e) {
-			// ignore
-		}
-
-		final long maxCount = maxParam;
 		ctx.vertx().executeBlocking(future -> {
-			List<Job> jobs = broker.peek(tubeName, maxCount);
+			String tubeName = ctx.request().getParam("tube");
+
+			long maxParam = 1;
+			try {
+				String param = ctx.request().getParam("max");
+				if (param != null && param.length() > 0) {
+					maxParam = Long.parseLong(param);
+				}
+			} catch (Exception e) {
+				// ignore
+			}
+			List<Job> jobs = broker.peek(tubeName, maxParam);
 			future.complete(jobs);
 		}, false, ar -> {
 			if (ar.succeeded()) {
@@ -288,32 +208,20 @@ public class JobApiHandler extends RestApiHandler {
 
 	@Put("/kick")
 	public void kick(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
-		String id = ctx.request().getParam("id");
-		if (id == null || id.length() == 0) {
-			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-			return;
-		}
-
-		long dtr = 0;
-		if (ctx.request().getParam("dtr") != null) {
-			try {
-				dtr = Long.parseLong(ctx.request().getParam("dtr"));
-			} catch (Exception e) {
-				failed(ctx, ValidErrorCode.JOB_DTR_INVALID, "job dtr is invalid");
-				return;
-			}
-		}
-
-		final long dtrParam = dtr;
 		ctx.vertx().executeBlocking(future -> {
+			String tubeName = ctx.request().getParam("tube");
+			String jid = ctx.request().getParam("jid");
+
+			long dtr = 0;
+			if (ctx.request().getParam("dtr") != null) {
+				try {
+					dtr = Long.parseLong(ctx.request().getParam("dtr"));
+				} catch (Exception e) {
+					throw new BusinessException(JobErrorCode.DTR_INVALID, "job dtr is invalid");
+				}
+			}
 			try {
-				future.complete(broker.kick(tubeName, id, dtrParam));
+				future.complete(broker.kick(tubeName, jid, dtr));
 			} catch (Exception e) {
 				future.fail(e);
 			}
@@ -329,20 +237,10 @@ public class JobApiHandler extends RestApiHandler {
 
 	@Delete("/discard")
 	public void discard(@Context RoutingContext ctx) {
-		String tubeName = ctx.request().getParam("tube");
-		if (tubeName == null || tubeName.length() == 0) {
-			failed(ctx, ValidErrorCode.TUBE_NAME_EMPTY, "tube name is empty");
-			return;
-		}
-
-		String id = ctx.request().getParam("id");
-		if (id == null || id.length() == 0) {
-			failed(ctx, ValidErrorCode.JOB_ID_EMPTY, "job id is empty");
-			return;
-		}
-
 		ctx.vertx().executeBlocking(future -> {
-			future.complete(broker.discard(tubeName, id));
+			String tubeName = ctx.request().getParam("tube");
+			String jid = ctx.request().getParam("jid");
+			future.complete(broker.discard(tubeName, jid));
 		}, false, ar -> {
 			if (ar.succeeded()) {
 				success(ctx, ar.result());

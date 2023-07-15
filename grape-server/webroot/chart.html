@@ -75,7 +75,7 @@
 					var data = [], time = (new Date()).getTime(), i;
 					for (i = -19; i <= 0; i += 1) {
 						data.push({
-							x : time + i * 1000,
+							x : time + i * 5000,
 							y : 0
 						});
 					}
@@ -89,27 +89,27 @@
 					var data = [], time = (new Date()).getTime(), i;
 					for (i = -19; i <= 0; i += 1) {
 						data.push({
-							x : time + i * 1000,
+							x : time + i * 5000,
 							y : 0
 						});
 					}
 					return data;
 				}())
-			} , {
-                name : 'Failed',
-                color : 'red',
-                data : (function() {
-                    // generate an array of random data
-                    var data = [], time = (new Date()).getTime(), i;
-                    for (i = -19; i <= 0; i += 1) {
-                        data.push({
-                            x : time + i * 1000,
-                            y : 0
-                        });
-                    }
-                    return data;
-                }())
-            } ]
+			}, {
+				name : 'Failed',
+				color : 'red',
+				data : (function() {
+					// generate an array of random data
+					var data = [], time = (new Date()).getTime(), i;
+					for (i = -19; i <= 0; i += 1) {
+						data.push({
+							x : time + i * 5000,
+							y : 0
+						});
+					}
+					return data;
+				}())
+			} ]
 		};
 		return Highcharts.chart(chartId, options);
 	}
@@ -152,10 +152,8 @@
 			var statsChart = createChart("statsChart", tube);
 			window.setInterval(function() {
 				$.getJSON("/api/tube/stats/" + tube, function(data, status) {
-					if (data.code == 0) {
-						if (data.data) {
-							upateChart(data.data, statsChart);
-						}
+					if (data) {
+						upateChart(data, statsChart);
 					}
 				});
 			}, 5000);
@@ -174,13 +172,18 @@
 	<div class="navbar navbar-default" role="navigation">
 		<div class="navbar-inner">
 			<button type="button" class="navbar-toggle pull-left animated flip">
-				<span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span>
+				<span class="sr-only">Toggle navigation</span> <span
+					class="icon-bar"></span> <span class="icon-bar"></span> <span
+					class="icon-bar"></span>
 			</button>
-			<a class="navbar-brand" href="/"><img alt="Charisma Logo" src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
+			<a class="navbar-brand" href="/"><img alt="Charisma Logo"
+				src="img/logo20.png" class="hidden-xs" /><span>Grape</span></a>
 			<!-- user dropdown starts -->
 			<div class="btn-group pull-right">
-				<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-					<i class="glyphicon glyphicon-user"></i><span class="hidden-sm hidden-xs"> admin</span> <span class="caret"></span>
+				<button class="btn btn-default dropdown-toggle"
+					data-toggle="dropdown">
+					<i class="glyphicon glyphicon-user"></i><span
+						class="hidden-sm hidden-xs"> admin</span> <span class="caret"></span>
 				</button>
 				<ul class="dropdown-menu">
 					<li><a href="#">Profile</a></li>
@@ -191,12 +194,17 @@
 			<!-- user dropdown ends -->
 			<!-- theme selector starts -->
 			<div class="btn-group pull-right theme-container animated tada">
-				<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-					<i class="glyphicon glyphicon-tint"></i><span class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span class="caret"></span>
+				<button class="btn btn-default dropdown-toggle"
+					data-toggle="dropdown">
+					<i class="glyphicon glyphicon-tint"></i><span
+						class="hidden-sm hidden-xs"> Change Theme / Skin</span> <span
+						class="caret"></span>
 				</button>
 				<ul class="dropdown-menu" id="themes">
-					<li><a data-value="classic" href="#"><i class="whitespace"></i> Classic</a></li>
-					<li><a data-value="slate" href="#"><i class="whitespace"></i> Slate</a></li>
+					<li><a data-value="classic" href="#"><i class="whitespace"></i>
+							Classic</a></li>
+					<li><a data-value="slate" href="#"><i class="whitespace"></i>
+							Slate</a></li>
 				</ul>
 			</div>
 			<!-- theme selector ends -->
@@ -232,7 +240,8 @@
 		<!--/fluid-row-->
 		<hr>
 		<footer class="row">
-		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019 Grape Admin</p>
+		<p class="col-md-9 col-sm-9 col-xs-12 copyright">&copy; 2019~2023
+			Grape Admin</p>
 		<p class="col-md-3 col-sm-3 col-xs-12 powered-by">
 			Powered by: <a href="http://usman.it/free-responsive-admin-template">Charisma</a>
 		</p>

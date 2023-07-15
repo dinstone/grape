@@ -28,62 +28,61 @@ import io.vertx.ext.web.RoutingContext;
 
 public abstract class RestApiHandler {
 
-    private static final int SUCCESS_CODE = 0;
-    private static final int FAILURE_CODE = 9999;
+	private static final int FAILURE_CODE = 9999;
 
-    private static final int CLIENT_ERROR_STATUS_CODE = 400;
-    private static final int SERVER_ERROR_STATUS_CODE = 500;
+	private static final int CLIENT_ERROR_STATUS_CODE = 400;
+	private static final int SERVER_ERROR_STATUS_CODE = 500;
 
-    protected Broker broker;
+	protected Broker broker;
 
-    public RestApiHandler(ApplicationContext context) {
-        broker = context.getBroker();
-    }
+	public RestApiHandler(ApplicationContext context) {
+		broker = context.getBroker();
+	}
 
-    protected void success(RoutingContext ctx) {
-        success(ctx, null);
-    }
+	protected void success(RoutingContext ctx) {
+		success(ctx, null);
+	}
 
-    protected void success(RoutingContext ctx, Object result) {
-        Map<String, Object> jo = new LinkedHashMap<>();
-        jo.put("code", SUCCESS_CODE);
-        if (result != null) {
-            jo.put("data", result);
-        }
-        ctx.response().end(Json.encode(jo));
-    }
+	protected void success(RoutingContext ctx, Object result) {
+		Map<String, Object> jo = new LinkedHashMap<>();
+		if (result != null) {
+			jo.put("data", result);
+		}
 
-    protected void failed(RoutingContext ctx, ErrorCode code, String message) {
-        Map<String, Object> jo = new LinkedHashMap<>();
-        jo.put("code", code.getValue());
-        jo.put("desc", message);
-        ctx.response().setStatusCode(CLIENT_ERROR_STATUS_CODE).end(Json.encode(jo));
-    }
+		ctx.response().end(Json.encode(result));
+	}
 
-    protected void failed(RoutingContext ctx, Throwable throwable) {
-        Map<String, Object> jo = new LinkedHashMap<>();
-        if (throwable instanceof BusinessException) {
-            BusinessException error = (BusinessException) throwable;
-            jo.put("code", error.getErrorCode().getValue());
-            jo.put("desc", error.getMessage());
-            ctx.response().setStatusCode(CLIENT_ERROR_STATUS_CODE);
-        } else {
-            jo.put("code", FAILURE_CODE);
-            jo.put("desc", getMessage(throwable));
-            ctx.response().setStatusCode(SERVER_ERROR_STATUS_CODE);
-        }
-        ctx.response().end(Json.encode(jo));
-    }
+	protected void failed(RoutingContext ctx, ErrorCode code, String message) {
+		Map<String, Object> jo = new LinkedHashMap<>();
+		jo.put("code", code.getValue());
+		jo.put("desc", message);
+		ctx.response().setStatusCode(CLIENT_ERROR_STATUS_CODE).end(Json.encode(jo));
+	}
 
-    private String getMessage(Throwable throwable) {
-        if (throwable == null) {
-            return "unkwon exception";
-        }
-        String message = throwable.getMessage();
-        if (message == null) {
-            return getMessage(throwable.getCause());
-        }
-        return message;
-    }
+	protected void failed(RoutingContext ctx, Throwable throwable) {
+		Map<String, Object> jo = new LinkedHashMap<>();
+		if (throwable instanceof BusinessException) {
+			BusinessException error = (BusinessException) throwable;
+			jo.put("code", error.getErrorCode().getValue());
+			jo.put("desc", error.getMessage());
+			ctx.response().setStatusCode(CLIENT_ERROR_STATUS_CODE);
+		} else {
+			jo.put("code", FAILURE_CODE);
+			jo.put("desc", getMessage(throwable));
+			ctx.response().setStatusCode(SERVER_ERROR_STATUS_CODE);
+		}
+		ctx.response().end(Json.encode(jo));
+	}
+
+	private String getMessage(Throwable throwable) {
+		if (throwable == null) {
+			return "unkwon exception";
+		}
+		String message = throwable.getMessage();
+		if (message == null) {
+			return getMessage(throwable.getCause());
+		}
+		return message;
+	}
 
 }

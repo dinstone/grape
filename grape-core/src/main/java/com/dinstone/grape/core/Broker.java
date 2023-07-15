@@ -15,12 +15,15 @@
  */
 package com.dinstone.grape.core;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import com.dinstone.grape.exception.ApplicationException;
 import com.dinstone.grape.exception.BusinessException;
+import com.dinstone.grape.exception.JobErrorCode;
 import com.dinstone.grape.exception.TubeErrorCode;
 import com.dinstone.grape.redis.RedisClient;
 
@@ -54,9 +58,9 @@ public class Broker {
 
 	private final Map<String, Tube> tubeMap;
 
-	private final Map<String, Runnable> taskMap;
+	private final ScheduledExecutorService scheduledExecutor;
 
-	private final ScheduledExecutorService executor;
+	private final Map<String, ScheduledFuture<?>> tubeTaskFutureMap;
 
 	public Broker(RedisClient redisClient) {
 		this(redisClient, null, Runtime.getRuntime().availableProcessors());
@@ -73,17 +77,17 @@ public class Broker {
 		if (namespace != null && !namespace.isEmpty()) {
 			this.namespace = namespace;
 			this.tubeSetKey = namespace + ":tube:set";
-			this.threadPrefix = "broker-scheduler-" + namespace + "-";
+			this.threadPrefix = "broker[" + namespace + "]-scheduler-";
 		} else {
 			this.namespace = "";
 			this.tubeSetKey = "tube:set";
-			this.threadPrefix = "broker-scheduler-";
+			this.threadPrefix = "broker[default]-scheduler-";
 		}
 
 		this.redisClient = redisClient;
 		this.tubeMap = new ConcurrentHashMap<>();
-		this.taskMap = new ConcurrentHashMap<>();
-		this.executor = Executors.newScheduledThreadPool(scheduledSize, new ThreadFactory() {
+		this.tubeTaskFutureMap = new ConcurrentHashMap<>();
+		this.scheduledExecutor = Executors.newScheduledThreadPool(scheduledSize, new ThreadFactory() {
 
 			private final AtomicInteger index = new AtomicInteger();
 
@@ -103,6 +107,10 @@ public class Broker {
 	}
 
 	private Tube loadTube(String tubeName) {
+		if (tubeName == null || tubeName.isEmpty()) {
+			throw new BusinessException(TubeErrorCode.EMPTY, "tube name is empty");
+		}
+
 		Tube tube = tubeMap.get(tubeName);
 		if (tube != null) {
 			return tube;
@@ -120,12 +128,15 @@ public class Broker {
 	}
 
 	public Tube createTube(String tubeName) {
+		if (tubeName == null || tubeName.isEmpty()) {
+			throw new BusinessException(TubeErrorCode.EMPTY, "tube name is empty");
+		}
+		if (tubeName.length() > TUBENAME_LENGTH) {
+			throw new BusinessException(TubeErrorCode.GREATE, "tube name greate than " + TUBENAME_LENGTH);
+		}
 		Pattern p = Pattern.compile(TUBENAME_REGEX);
 		if (!p.matcher(tubeName).matches()) {
 			throw new BusinessException(TubeErrorCode.INVALID, "tube name not match " + TUBENAME_REGEX);
-		}
-		if (tubeName.length() > TUBENAME_LENGTH) {
-			throw new BusinessException(TubeErrorCode.GREATE, "tube name length greate than " + TUBENAME_LENGTH);
 		}
 
 		Tube tube = tubeMap.get(tubeName);
@@ -139,6 +150,10 @@ public class Broker {
 	}
 
 	public void deleteTube(String tubeName) {
+		if (tubeName == null || tubeName.isEmpty()) {
+			throw new BusinessException(TubeErrorCode.EMPTY, "tube name is empty");
+		}
+
 		Tube tube = tubeMap.remove(tubeName);
 		if (tube == null) {
 			if (contains(tubeName)) {
@@ -165,9 +180,10 @@ public class Broker {
 	}
 
 	public boolean produce(String tubeName, Job job) {
-		if (tubeName == null || tubeName.length() == 0) {
-			throw new BusinessException(TubeErrorCode.EMPTY, "tubeName is empty");
+		if (job == null || job.getId() == null) {
+			throw new BusinessException(JobErrorCode.ID_EMPTY, "job id is empty");
 		}
+
 		if (job.getTtr() < DEFAULT_TTR) {
 			job.setTtr(DEFAULT_TTR);
 		}
@@ -175,6 +191,9 @@ public class Broker {
 	}
 
 	public boolean delete(String tubeName, String jobId) {
+		if (jobId == null) {
+			throw new BusinessException(JobErrorCode.ID_EMPTY, "job id is empty");
+		}
 		return loadTube(tubeName).delete(jobId);
 	}
 
@@ -182,28 +201,39 @@ public class Broker {
 		if (max < 1) {
 			max = 1;
 		}
-		Tube tube = loadTube(tubeName);
-		return tube.consume(max);
+		return loadTube(tubeName).consume(max);
 	}
 
 	public boolean finish(String tubeName, String jobId) {
+		if (jobId == null) {
+			throw new BusinessException(JobErrorCode.ID_EMPTY, "job id is empty");
+		}
 		return loadTube(tubeName).finish(jobId);
 	}
 
 	public boolean discard(String tubeName, String jobId) {
+		if (jobId == null) {
+			throw new BusinessException(JobErrorCode.ID_EMPTY, "job id is empty");
+		}
 		return loadTube(tubeName).discard(jobId);
 	}
 
 	public List<Job> peek(String tubeName, long max) {
+		if (max < 1) {
+			max = 1;
+		}
 		return loadTube(tubeName).peek(max);
 	}
 
 	public boolean kick(String tubeName, String jobId, long dtr) {
+		if (jobId == null) {
+			throw new BusinessException(JobErrorCode.ID_EMPTY, "job id is empty");
+		}
 		return loadTube(tubeName).kick(jobId, dtr);
 	}
 
 	/**
-	 * move the job of tube to delay queue from reserved.
+	 * move the job to delay queue from retain queue.
 	 * 
 	 * @param tubeName
 	 * @param jobId
@@ -212,15 +242,21 @@ public class Broker {
 	 * @return
 	 */
 	public boolean release(String tubeName, String jobId, long dtr) {
+		if (jobId == null) {
+			throw new BusinessException(JobErrorCode.ID_EMPTY, "job id is empty");
+		}
 		return loadTube(tubeName).release(jobId, dtr);
 	}
 
 	public boolean bury(String tubeName, String jobId) {
+		if (jobId == null) {
+			throw new BusinessException(JobErrorCode.ID_EMPTY, "job id is empty");
+		}
 		return loadTube(tubeName).bury(jobId);
 	}
 
 	public Broker start() {
-		executor.scheduleAtFixedRate(new Runnable() {
+		scheduledExecutor.scheduleAtFixedRate(new Runnable() {
 
 			@Override
 			public void run() {
@@ -237,9 +273,9 @@ public class Broker {
 	}
 
 	public Broker stop() {
-		executor.shutdown();
+		scheduledExecutor.shutdown();
 		try {
-			executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.HOURS);
+			scheduledExecutor.awaitTermination(Integer.MAX_VALUE, TimeUnit.HOURS);
 		} catch (InterruptedException e) {
 		}
 		LOG.info("Broker[{}] is shutdown", namespace);
@@ -247,17 +283,32 @@ public class Broker {
 	}
 
 	private void dispatch() {
+		// discovery new tubes
 		Set<String> tubeSet = tubeSet();
 		for (String tubeName : tubeSet) {
-			if (!taskMap.containsKey(tubeName)) {
+			if (!tubeTaskFutureMap.containsKey(tubeName)) {
 				ScheduledTask task = new ScheduledTask(createTube(tubeName));
-				executor.scheduleWithFixedDelay(task, 0, 1, TimeUnit.SECONDS);
-				taskMap.put(tubeName, task);
+				ScheduledFuture<?> future = scheduledExecutor.scheduleWithFixedDelay(task, 0, 1, TimeUnit.SECONDS);
+				tubeTaskFutureMap.put(tubeName, future);
 			}
+		}
+		// remove old tubes
+		for (Iterator<Entry<String, ScheduledFuture<?>>> iterator = tubeTaskFutureMap.entrySet().iterator(); iterator
+				.hasNext();) {
+			Entry<String, ScheduledFuture<?>> next = iterator.next();
+			if (tubeSet.contains(next.getKey())) {
+				continue;
+			}
+
+			// cancel tube scheduled task
+			next.getValue().cancel(true);
+			// delete tube task future
+			iterator.remove();
 		}
 	}
 
 	private final class ScheduledTask implements Runnable {
+
 		private final Tube tube;
 
 		private ScheduledTask(Tube tube) {

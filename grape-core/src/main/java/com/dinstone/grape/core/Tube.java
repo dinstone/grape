@@ -175,6 +175,7 @@ public class Tube {
 	public void schedule() {
 		if (scheduleLock.acquire()) {
 			try {
+				LOG.debug("tube[{}] shcedule reatin to ready", tubeName);
 				retainToReady();
 			} finally {
 				scheduleLock.release();
@@ -449,6 +450,11 @@ public class Tube {
 		}
 
 		return false;
+	}
+
+	@Override
+	public String toString() {
+		return "Tube [tubeName=" + tubeName + "]";
 	}
 
 	private Map<String, String> job2Map(Job job) {
