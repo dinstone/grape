@@ -104,8 +104,12 @@ $(document).ready(
                         msg = jqXHR.responseJSON.desc;
                         break;
                 }
+
                 alert(msg);
-                // window.location.href = "/index.html";
+
+                if (jqXHR.status == 401 || jqXHR.status == 403) {
+                    window.location.href = "/index.html";
+                }
             }
         });
 
