@@ -4,20 +4,6 @@ Grape is a distributed delay job system based on Redis.
 
 [真正的千万级分布式延迟任务系统 Grape](https://dinstone.github.io/2023/07/07/delay-task-with-redis/)
 
-## Job Lifecycle
-
-A job in Grape during its life it can be in one of four states: "delay", "ready", "remain", or "failed".
-
-Here is a picture of the typical job lifecycle:
-![image](https://dinstone.github.io/img/arch/grape-status.png)
-
-## Admin UI
-Access grape admin endpoint: http://localhost:9595/
-
-![image](https://github.com/dinstone/grape/wiki/images/admin-main.jpeg)
-
-![image](https://github.com/dinstone/grape/wiki/images/admin-chart.png)
-
 ## Releases
 
 * [1.3.1] improve API and bugfix.
@@ -32,24 +18,40 @@ Access grape admin endpoint: http://localhost:9595/
 
 * 1.0.0 have released a Redis based delayed job system and opened the rest interface.
 
-# Quick Start
+## Job Lifecycle
+
+A job in Grape during its life it can be in one of four states: "delay", "ready", "remain", or "failed".
+
+Here is a picture of the typical job lifecycle:
+
+![image](https://dinstone.github.io/img/arch/grape-status.png)
+
+## Admin UI
+
+Access grape admin endpoint: http://localhost:9595/
+
+![image](https://github.com/dinstone/grape/wiki/images/admin-main.jpeg)
+
+![image](https://github.com/dinstone/grape/wiki/images/admin-chart.png)
+
+# Quick Start [快速开始](https://github.com/dinstone/grape/wiki/Quick.md)
 
 ## step 1: clone project from github
 
-```
+```shell
 git clone https://github.com/dinstone/grape.git
 ```
 
 ## step 2: source building
 
-```
+```shell
 cd grape
 maven package
 ```
 
 ## step 3: deployment package
 
-```
+```shell
 cd grape/grape-server/target
 unzip grape-server-1.3.0.zip
 cd grape-server-1.3.0/config/
@@ -129,14 +131,14 @@ edit users info from user.json file.
 
 ## step 4: start grape by script
 
-```
+```shell
 cd grape-server-1.3.1/bin
 ./start.sh
 ```
 
 ## step 5: stop grape by script
 
-```
+```shell
 cd grape-server-1.3.1/bin
 ./stop.sh
 ```
@@ -147,7 +149,7 @@ You can find the complete [API Definition](https://documenter.getpostman.com/vie
 
 ### Produce API
 
-```
+```shell
 Example Request
 curl --location 'http://localhost:9521/api/job/produce?tube=test&jid=j004&dtr=1000&ttr=10000' \
 --header 'Content-Type: application/json' \
@@ -163,7 +165,7 @@ true
 
 ### Delete API
 
-```
+```shell
 Example Request
 curl --location --request DELETE 'http://localhost:9521/api/job/delete?tube=test&jid=j001'
 
@@ -173,7 +175,7 @@ true
 
 ### Consume API
 
-```
+```shell
 Example Request
 curl --location 'http://localhost:9521/api/job/consume?tube=test&max=10'
 
@@ -191,7 +193,7 @@ Example Response200 OK
 
 ### Finish API
 
-```
+```shell
 Example Request
 curl --location --request DELETE 'http://localhost:9521/api/job/finish?tube=test&jid=j003'
 
@@ -201,7 +203,7 @@ true
 
 ### Release API
 
-```
+```shell
 Example Request
 curl --location --request PUT 'http://localhost:9521/api/job/release?tube=test&jid=j001&dtr=20000'
 
@@ -211,7 +213,7 @@ true
 
 ### Tube list API
 
-```
+```shell
 Example Request
 curl --location 'http://localhost:9521/api/tube/list'
 
@@ -223,7 +225,7 @@ Example Response200 OK
 
 ### Tube Stats API
 
-```
+```shell
 Example Request
 curl --location 'http://localhost:9521/api/tube/stats'
 
@@ -240,3 +242,13 @@ Example Response200 OK
     }
 ]
 ```
+# Documents
+
+[架构设计](https://github.com/dinstone/grape/wiki)
+
+[快速开始](https://github.com/dinstone/grape/wiki/Quick.md)
+
+
+# License
+
+Grape is released under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
