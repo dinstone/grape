@@ -246,7 +246,7 @@ Example Response200 OK
 
 [架构设计](https://github.com/dinstone/grape/wiki)
 
-[快速开始](https://github.com/dinstone/grape/wiki/Quick.md)
+[快速开始](https://github.com/dinstone/grape/wiki/Quick)
 
 
 # License
