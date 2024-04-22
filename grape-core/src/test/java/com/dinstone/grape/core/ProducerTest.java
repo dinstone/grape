@@ -92,8 +92,8 @@ public class ProducerTest {
 	private static final Logger LOG = LoggerFactory.getLogger(ProducerTest.class);
 
 	public static void main(String[] args) throws IOException {
-//		testCluster();
-		testPooled();
+		testCluster();
+//		testPooled();
 	}
 
 	public static void testPooled() throws IOException {

@@ -6,6 +6,8 @@ Grape is a distributed delay job system based on Redis.
 
 ## Releases
 
+* [1.3.2] Redis version 3.0.2
+
 * [1.3.1] improve API and bugfix.
 
 * [1.3.0](https://github.com/dinstone/grape/releases/tag/1.3.0) support redis cluster model.
@@ -62,50 +64,54 @@ edit redis config from config.json file.
 * jedis pooled client config
 
 ```json
-"redis": {
-  "nodes": [
-    {
-      "host": "127.0.0.1",
-      "port": 6379
+{
+    "redis": {
+      "nodes": [
+        {
+          "host": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "model": "pooled",
+      "maxTotal": 8,
+      "minIdle": 1,
+      "timeout": 2000,
+      "maxWaitMillis": 3000,
+      "numTestsPerEvictionRun": -1,
+      "minEvictableIdleTimeMillis": 60000,
+      "timeBetweenEvictionRunsMillis": 30000
     }
-  ],
-  "model": "pooled",
-  "maxTotal": 8,
-  "minIdle": 1,
-  "timeout": 2000,
-  "maxWaitMillis": 3000,
-  "numTestsPerEvictionRun": -1,
-  "minEvictableIdleTimeMillis": 60000,
-  "timeBetweenEvictionRunsMillis": 30000
 }
 ```
 
 * jedis cluster client config
 
 ```json
-"redis": {
-  "nodes": [
-    {
-      "host": "192.168.1.120",
-      "port": 7001
-    },
-    {
-      "host": "192.168.1.120",
-      "port": 7002
-    },
-    {
-      "host": "192.168.1.120",
-      "port": 7003
+{
+    "redis": {
+      "nodes": [
+        {
+          "host": "192.168.1.120",
+          "port": 7001
+        },
+        {
+          "host": "192.168.1.120",
+          "port": 7002
+        },
+        {
+          "host": "192.168.1.120",
+          "port": 7003
+        }
+      ],
+      "model": "cluster",
+      "maxTotal": 4,
+      "minIdle": 1,
+      "timeout": 2000,
+      "maxWaitMillis": 3000,
+      "numTestsPerEvictionRun": -1,
+      "minEvictableIdleTimeMillis": 60000,
+      "timeBetweenEvictionRunsMillis": 30000
     }
-  ],
-  "model": "cluster",
-  "maxTotal": 4,
-  "minIdle": 1,
-  "timeout": 2000,
-  "maxWaitMillis": 3000,
-  "numTestsPerEvictionRun": -1,
-  "minEvictableIdleTimeMillis": 60000,
-  "timeBetweenEvictionRunsMillis": 30000
 }
 ```
 

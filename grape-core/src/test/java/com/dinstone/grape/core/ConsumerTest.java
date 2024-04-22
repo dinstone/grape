@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 
 import com.dinstone.grape.redis.ClusterClient;
 import com.dinstone.grape.redis.PooledClient;
-
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPool;
@@ -35,123 +34,127 @@ import redis.clients.jedis.JedisPoolConfig;
 
 public class ConsumerTest {
 
-	private static class Consumer extends Thread {
+    private static class Consumer extends Thread {
 
-		private static final Logger LOG = LoggerFactory.getLogger(ConsumerTest.Consumer.class);
+        private static final Logger LOG = LoggerFactory.getLogger(ConsumerTest.Consumer.class);
 
-		private final AtomicBoolean closed = new AtomicBoolean(false);
+        private final AtomicBoolean closed = new AtomicBoolean(false);
 
-		private Broker broker;
+        private Broker broker;
 
-		private String tubeName;
+        private String tubeName;
 
-		private int index;
+        private int index;
 
-		public Consumer(int index, String tubeName, Broker tubeManager) {
-			this.index = index;
-			this.tubeName = tubeName;
-			this.broker = tubeManager;
+        public Consumer(int index, String tubeName, Broker tubeManager) {
+            this.index = index;
+            this.tubeName = tubeName;
+            this.broker = tubeManager;
 
-			setName("Consumer-" + index);
-		}
+            setName("Consumer-" + index);
+        }
 
-		public void shutdown() {
-			closed.set(true);
-		}
+        public void shutdown() {
+            closed.set(true);
+        }
 
-		@Override
-		public void run() {
-			while (!closed.get()) {
-				Stats stats = broker.stats(tubeName);
-				LOG.info("{}", stats);
+        @Override
+        public void run() {
+            while (!closed.get()) {
+                Stats stats = broker.stats(tubeName);
+                LOG.info("{}", stats);
 
-				List<Job> jobs = broker.consume(tubeName, 50);
-				if (jobs == null || jobs.size() == 0) {
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {
-						break;
-					}
-					continue;
-				}
+                List<Job> jobs = broker.consume(tubeName, 50);
+                if (jobs == null || jobs.isEmpty()) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                    continue;
+                }
 
-				for (Job job : jobs) {
-					broker.finish(tubeName, job.getId());
-				}
-				LOG.info("consumer:{} handle jobs[{}:{}]", index, tubeName, jobs.size());
-			}
-		}
+                for (Job job : jobs) {
+                    boolean f = broker.finish(tubeName, job.getId());
+                    if (!f) {
+                        LOG.warn("finish not find job {}", job.getId());
+                    }
+                }
+                LOG.info("consumer:{}, handle jobs[{}:{}]", index, tubeName, jobs.size());
+            }
+        }
 
-	}
+    }
 
-	public static void main(String[] args) {
-		clusterBroker();
+    public static void main(String[] args) {
+        clusterBroker();
 //		pooledBroker();
-	}
+    }
 
-	private static void clusterBroker() {
-		Set<HostAndPort> jedisClusterNode = new HashSet<HostAndPort>();
-		jedisClusterNode.add(new HostAndPort("192.168.1.120", 7001));
-		jedisClusterNode.add(new HostAndPort("192.168.1.120", 7002));
-		jedisClusterNode.add(new HostAndPort("192.168.1.120", 7003));
+    private static void clusterBroker() {
+        Set<HostAndPort> jedisClusterNode = new HashSet<HostAndPort>();
+        jedisClusterNode.add(new HostAndPort("192.168.1.120", 7001));
+        jedisClusterNode.add(new HostAndPort("192.168.1.120", 7002));
+        jedisClusterNode.add(new HostAndPort("192.168.1.120", 7003));
 
-		JedisPoolConfig config = new JedisPoolConfig();
-		config.setMaxTotal(100);
-		config.setMaxIdle(10);
+        JedisPoolConfig config = new JedisPoolConfig();
+        config.setMaxTotal(100);
+        config.setMaxIdle(10);
 
-		JedisCluster jedisCluster = new JedisCluster(jedisClusterNode, 1000, 3, config);
-		Broker tubeManager = new Broker(new ClusterClient(jedisCluster), "grape", 4);
+        JedisCluster jedisCluster = new JedisCluster(jedisClusterNode, 1000, 3, config);
+        Broker broker = new Broker(new ClusterClient(jedisCluster), "grape", 4);
+        broker.start();
+        System.out.println("tubes = " + broker.tubeSet());
 
-		System.out.println("tubes = " + tubeManager.tubeSet());
+        List<Consumer> consumers = new ArrayList<>(3);
+        for (int i = 0; i < 3; i++) {
+            Consumer target = new Consumer(i, "test", broker);
+            target.start();
+            consumers.add(target);
+        }
 
-		List<Consumer> consumers = new ArrayList<>(3);
-		for (int i = 0; i < 3; i++) {
-			Consumer target = new Consumer(i, "test", tubeManager);
-			target.start();
-			consumers.add(target);
-		}
+        try {
+            System.in.read();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-		try {
-			System.in.read();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+        for (Consumer consumer : consumers) {
+            try {
+                consumer.shutdown();
+                consumer.join();
+            } catch (InterruptedException e) {
+            }
+        }
+        broker.stop();
+    }
 
-		for (Consumer consumer : consumers) {
-			try {
-				consumer.shutdown();
-				consumer.join();
-			} catch (InterruptedException e) {
-			}
-		}
-	}
+    private static void pooledBroker() {
+        JedisPool jedisPool = new JedisPool("192.168.1.120", 6379);
+        Broker tubeManager = new Broker(new PooledClient(jedisPool));
 
-	private static void pooledBroker() {
-		JedisPool jedisPool = new JedisPool("192.168.1.120", 6379);
-		Broker tubeManager = new Broker(new PooledClient(jedisPool));
+        List<Consumer> consumers = new ArrayList<>(3);
+        for (int i = 0; i < 3; i++) {
+            Consumer target = new Consumer(i, "test", tubeManager);
+            target.start();
+            consumers.add(target);
+        }
 
-		List<Consumer> consumers = new ArrayList<>(3);
-		for (int i = 0; i < 3; i++) {
-			Consumer target = new Consumer(i, "test", tubeManager);
-			target.start();
-			consumers.add(target);
-		}
+        try {
+            System.in.read();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-		try {
-			System.in.read();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+        for (Consumer consumer : consumers) {
+            try {
+                consumer.shutdown();
+                consumer.join();
+            } catch (InterruptedException e) {
+            }
+        }
 
-		for (Consumer consumer : consumers) {
-			try {
-				consumer.shutdown();
-				consumer.join();
-			} catch (InterruptedException e) {
-			}
-		}
-
-		jedisPool.destroy();
-	}
+        jedisPool.destroy();
+    }
 
 }

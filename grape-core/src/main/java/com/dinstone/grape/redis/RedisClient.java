@@ -20,7 +20,7 @@ import java.util.Set;
 
 public interface RedisClient {
 
-	public Long setnx(final String key, final String value);
+	public boolean setNxEx(final String key, final String value, long lockTimeout);
 
 	public Long expire(final String key, final long seconds);
 

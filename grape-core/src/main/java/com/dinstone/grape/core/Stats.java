@@ -21,17 +21,13 @@ import java.util.Date;
 public class Stats implements Serializable {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = 1L;
 
     private Date dateTime;
 
     private String tubeName;
-
-    private long totalJobSize;
-
-    private long finishJobSize;
 
     private long delayQueueSize;
 
@@ -53,22 +49,6 @@ public class Stats implements Serializable {
 
     public void setTubeName(String tubeName) {
         this.tubeName = tubeName;
-    }
-
-    public long getTotalJobSize() {
-        return totalJobSize;
-    }
-
-    public void setTotalJobSize(long totalJobSize) {
-        this.totalJobSize = totalJobSize;
-    }
-
-    public long getFinishJobSize() {
-        return finishJobSize;
-    }
-
-    public void setFinishJobSize(long finishJobSize) {
-        this.finishJobSize = finishJobSize;
     }
 
     public long getDelayQueueSize() {
@@ -97,9 +77,7 @@ public class Stats implements Serializable {
 
     @Override
     public String toString() {
-        return "Stats [tubeName=" + tubeName + ", totalJobSize=" + totalJobSize + ", finishJobSize=" + finishJobSize
-                + ", delayQueueSize=" + delayQueueSize + ", retainQueueSize=" + retainQueueSize + ", failedQueueSize="
-                + failedQueueSize + "]";
+        return "Stats [tubeName=" + tubeName + ", delayQueueSize=" + delayQueueSize + ", retainQueueSize=" + retainQueueSize + ", failedQueueSize=" + failedQueueSize + "]";
     }
 
 }

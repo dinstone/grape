@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 
 import redis.clients.jedis.JedisCluster;
+import redis.clients.jedis.params.SetParams;
 
 public class ClusterClient implements RedisClient {
 
@@ -29,8 +30,9 @@ public class ClusterClient implements RedisClient {
 	}
 
 	@Override
-	public Long setnx(String key, String value) {
-		return jedisCluster.setnx(key, value);
+	public boolean setNxEx(String key, String value, long lockTimeout) {
+		SetParams params = SetParams.setParams().nx().ex(lockTimeout);
+		return jedisCluster.set(key, value, params) != null;
 	}
 
 	@Override
@@ -133,7 +135,6 @@ public class ClusterClient implements RedisClient {
 		return jedisCluster.hget(key, field);
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
 	public void destroy() {
 		jedisCluster.close();

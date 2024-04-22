@@ -101,7 +101,7 @@ public class JobApiHandler extends RestApiHandler {
 			int maxParam = 1;
 			try {
 				String param = ctx.request().getParam("max");
-				if (param != null && param.length() > 0) {
+				if (param != null && !param.isEmpty()) {
 					maxParam = Integer.parseInt(param);
 				}
 			} catch (Exception e) {
@@ -123,8 +123,8 @@ public class JobApiHandler extends RestApiHandler {
 	public void finish(@Context RoutingContext ctx) {
 		ctx.vertx().executeBlocking(future -> {
 			String tubeName = ctx.request().getParam("tube");
-			String jobid = ctx.request().getParam("jid");
-			future.complete(broker.finish(tubeName, jobid));
+			String jobId = ctx.request().getParam("jid");
+			future.complete(broker.finish(tubeName, jobId));
 		}, false, ar -> {
 			if (ar.succeeded()) {
 				success(ctx, ar.result());
@@ -138,7 +138,7 @@ public class JobApiHandler extends RestApiHandler {
 	public void release(@Context RoutingContext ctx) {
 		ctx.vertx().executeBlocking(future -> {
 			String tubeName = ctx.request().getParam("tube");
-			String jobid = ctx.request().getParam("jid");
+			String jobId = ctx.request().getParam("jid");
 
 			long dtr = 0;
 			if (ctx.request().getParam("dtr") != null) {
@@ -149,7 +149,7 @@ public class JobApiHandler extends RestApiHandler {
 				}
 			}
 
-			future.complete(broker.release(tubeName, jobid, dtr));
+			future.complete(broker.release(tubeName, jobId, dtr));
 		}, false, ar -> {
 			if (ar.succeeded()) {
 				success(ctx, ar.result());
@@ -170,8 +170,8 @@ public class JobApiHandler extends RestApiHandler {
 	public void bury(@Context RoutingContext ctx) {
 		ctx.vertx().executeBlocking(future -> {
 			String tubeName = ctx.request().getParam("tube");
-			String jobid = ctx.request().getParam("jid");
-			future.complete(broker.bury(tubeName, jobid));
+			String jobId = ctx.request().getParam("jid");
+			future.complete(broker.bury(tubeName, jobId));
 		}, false, ar -> {
 			if (ar.succeeded()) {
 				success(ctx, ar.result());
@@ -189,7 +189,7 @@ public class JobApiHandler extends RestApiHandler {
 			long maxParam = 1;
 			try {
 				String param = ctx.request().getParam("max");
-				if (param != null && param.length() > 0) {
+				if (param != null && !param.isEmpty()) {
 					maxParam = Long.parseLong(param);
 				}
 			} catch (Exception e) {
