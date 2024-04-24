@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.dinstone.grape</groupId>
@@ -75,18 +76,10 @@
                                 <name>Xmx</name>
                                 <value>1g</value>
                             </property>
-                            <property>
-                                <name>launcher.listen.enabled</name>
-                                <value>true</value>
-                            </property>
-                            <property>
-                                <name>launcher.listen.port</name>
-                                <value>4444</value>
-                            </property>
                         </properties>
                     </launcher>
                     <application>
-                        <activator>com.dinstone.grape.server.ApplicationActivator</activator>
+                        <activator>com.dinstone.grape.server.GrapeLauncher</activator>
                         <configs>
                             <config>
                                 <directory>src/main/resources</directory>
@@ -131,7 +124,7 @@
                         <paths>
                             <path>
                                 <from>webroot</from>
-                                <into>/app/webroot</into>
+                                <into>/grape/webroot</into>
                             </path>
                         </paths>
                     </extraDirectories>
@@ -142,21 +135,21 @@
                             <jvmFlag>-XX:InitialRAMPercentage=10.0</jvmFlag>
                             <jvmFlag>-XX:MinRAMPercentage=10.0</jvmFlag>
                             <jvmFlag>-XX:MaxRAMPercentage=70.0</jvmFlag>
-                            <jvmFlag>-XX:+PrintGCDetails</jvmFlag>
-                            <jvmFlag>-Xloggc:/app/logs/gc.log</jvmFlag>
+                            <jvmFlag>-Xlog:gc:/grape/logs/gc.log</jvmFlag>
                             <jvmFlag>-Djava.awt.headless=true</jvmFlag>
                             <jvmFlag>-Duser.timezone=PRC</jvmFlag>
                         </jvmFlags>
+                        <appRoot>/grape</appRoot>
+                        <workingDirectory>/grape</workingDirectory>
                         <creationTime>${maven.build.timestamp}</creationTime>
-                        <workingDirectory>/app/</workingDirectory>
                         <mainClass>com.dinstone.grape.server.GrapeLauncher</mainClass>
                         <ports>
                             <port>9595</port>
                             <port>9521</port>
                         </ports>
                         <volumes>
-                            <volume>/app/resources</volume>
-                            <volume>/app/logs</volume>
+                            <volume>/grape/resources</volume>
+                            <volume>/grape/logs</volume>
                         </volumes>
                     </container>
                 </configuration>

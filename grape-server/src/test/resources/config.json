@@ -1,43 +1,58 @@
 {
-	"vertx": {
-		"workerPoolSize": 4,
-		"eventLoopPoolSize": 2,
-		"blockedThreadCheckInterval": 30000000
-	},
-	"verticle": {
-		"rest.instances": 2,
-		"http.instances": 2
-	},
-	"web": {
-		"http.port": 9595,
-		"rest.port": 9521
-	},
-	"broker": {
-		"namespace": "grape",
-		"scheduledSize": 4
-	},
-	"redis": {
-		"nodes": [
-			{
-				"host": "192.168.1.120",
-				"port": 7001
-			},
-			{
-				"host": "192.168.1.120",
-				"port": 7002
-			},
-			{
-				"host": "192.168.1.120",
-				"port": 7003
-			}
-		],
-		"model": "cluster",
-		"maxTotal": 4,
-		"minIdle": 1,
-		"timeout": 2000,
-		"maxWaitMillis": 3000,
-		"numTestsPerEvictionRun": -1,
-		"minEvictableIdleTimeMillis": 60000,
-		"timeBetweenEvictionRunsMillis": 30000
-	}
+  "vertx": {
+    "workerPoolSize": 4,
+    "eventLoopPoolSize": 2,
+    "blockedThreadCheckInterval": 30000000
+  },
+  "verticle": {
+    "rest.instances": 2,
+    "http.instances": 2
+  },
+  "web": {
+    "http.port": 9595,
+    "rest.port": 9521
+  },
+  "broker": {
+    "namespace": "grape",
+    "scheduledSize": 4
+  },
+  "redis": {
+    "nodes": [
+      {
+        "host": "192.168.1.120",
+        "port": 7001
+      },
+      {
+        "host": "192.168.1.120",
+        "port": 7002
+      },
+      {
+        "host": "192.168.1.120",
+        "port": 7003
+      }
+    ],
+    "model": "cluster",
+    "maxTotal": 4,
+    "minIdle": 1,
+    "timeout": 2000,
+    "maxWaitMillis": 3000,
+    "numTestsPerEvictionRun": -1,
+    "minEvictableIdleTimeMillis": 60000,
+    "timeBetweenEvictionRunsMillis": 30000
+  },
+  "users": {
+    "admin": {
+      "password": "grape",
+      "roles": [
+        "writer",
+        "reader"
+      ]
+    },
+    "guid": {
+      "password": "grape",
+      "roles": [
+        "reader"
+      ]
+    }
+  }
 }

@@ -1,35 +1,50 @@
 {
-	"vertx": {
-		"workerPoolSize": 4,
-		"eventLoopPoolSize": 4,
-		"blockedThreadCheckInterval": 1000
-	},
-	"verticle": {
-		"rest.instances": 2,
-		"http.instances": 2
-	},
-	"web": {
-		"http.port": 9595,
-		"rest.port": 9521
-	},
-	"broker": {
-		"namespace": "",
-		"scheduledSize": 4
-	},
-	"redis": {
-		"nodes": [
-			{
-				"host": "192.168.1.120",
-				"port": 6379
-			}
-		],
-		"model": "pooled",
-		"maxTotal": 8,
-		"minIdle": 1,
-		"timeout": 2000,
-		"maxWaitMillis": 3000,
-		"numTestsPerEvictionRun": -1,
-		"minEvictableIdleTimeMillis": 60000,
-		"timeBetweenEvictionRunsMillis": 30000
-	}
+  "vertx": {
+    "workerPoolSize": 4,
+    "eventLoopPoolSize": 4,
+    "blockedThreadCheckInterval": 1000
+  },
+  "verticle": {
+    "rest.instances": 2,
+    "http.instances": 2
+  },
+  "web": {
+    "http.port": 9595,
+    "rest.port": 9521
+  },
+  "broker": {
+    "namespace": "",
+    "scheduledSize": 4
+  },
+  "redis": {
+    "nodes": [
+      {
+        "host": "192.168.1.120",
+        "port": 6379
+      }
+    ],
+    "model": "pooled",
+    "maxTotal": 8,
+    "minIdle": 1,
+    "timeout": 2000,
+    "maxWaitMillis": 3000,
+    "numTestsPerEvictionRun": -1,
+    "minEvictableIdleTimeMillis": 60000,
+    "timeBetweenEvictionRunsMillis": 30000
+  },
+  "users": {
+    "admin": {
+      "password": "grape",
+      "roles": [
+        "writer",
+        "reader"
+      ]
+    },
+    "guid": {
+      "password": "grape",
+      "roles": [
+        "reader"
+      ]
+    }
+  }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016~2023 dinstone<dinstone@163.com>
+ * Copyright (C) 2016~2024 dinstone<dinstone@163.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,13 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.dinstone.grape.server.verticle.GrapeVerticleFactory;
+import com.dinstone.grape.server.verticle.WebHttpVerticle;
+import com.dinstone.grape.server.verticle.WebRestVerticle;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.SLF4JLogDelegateFactory;
 
 public class GrapeLauncher {
@@ -40,18 +47,86 @@ public class GrapeLauncher {
         }
         LOG.info("application home is {}", applicationHome);
 
-        // launch application activator
-        ApplicationActivator activator = new ApplicationActivator();
+        // launch application
+        GrapeLauncher launcher = new GrapeLauncher();
         try {
             long s = System.currentTimeMillis();
-            activator.start();
+            launcher.start();
             long e = System.currentTimeMillis();
             LOG.info("application startup in {} ms.", (e - s));
         } catch (Exception e) {
             LOG.error("application startup error.", e);
-            activator.stop();
+            launcher.stop();
 
             System.exit(-1);
         }
+    }
+
+    private Vertx vertx;
+
+    private ApplicationContext context;
+
+    public void start() throws Exception {
+        JsonObject config = ConfigHelper.loadConfig("config.json");
+        LOG.info("application config :\r\n{}", config.encodePrettily());
+
+        JsonObject webConfig = config.getJsonObject("web", new JsonObject());
+        int restPort = webConfig.getInteger("rest.port", 9521);
+        int httpPort = webConfig.getInteger("http.port", 9595);
+        if (httpPort == restPort) {
+            throw new IllegalStateException("rest.port==http.port");
+        }
+
+        //config.put("users", ConfigHelper.loadConfig("user.json"));
+
+        context = new ApplicationContext(config);
+
+        vertx = VertxHelper.createVertx(loadVertxOptions(config));
+
+        GrapeVerticleFactory factory = new GrapeVerticleFactory(context);
+        JsonObject vconfig = config.getJsonObject("verticle", new JsonObject());
+
+        int instances = vconfig.getInteger("rest.instances", Runtime.getRuntime().availableProcessors());
+        DeploymentOptions wrOptions = new DeploymentOptions().setConfig(config).setInstances(instances);
+        VertxHelper.deployVerticle(vertx, wrOptions, factory, factory.getVerticleName(WebRestVerticle.class));
+
+        instances = vconfig.getInteger("http.instances", Runtime.getRuntime().availableProcessors());
+        if (instances > 0) {
+            DeploymentOptions whOptions = new DeploymentOptions().setConfig(config).setInstances(instances);
+            VertxHelper.deployVerticle(vertx, whOptions, factory, factory.getVerticleName(WebHttpVerticle.class));
+        }
+    }
+
+    public void stop() {
+        if (vertx != null) {
+            vertx.close(ar -> {
+                if (context != null) {
+                    context.destroy();
+                }
+            });
+        }
+    }
+
+    private VertxOptions loadVertxOptions(JsonObject config) {
+        VertxOptions vertxOptions = new VertxOptions();
+        // vertxOptions.getEventBusOptions().setClustered(false);
+
+        JsonObject vertxConfig = config.getJsonObject("vertx", new JsonObject());
+        int blockedThreadCheckInterval = vertxConfig.getInteger("blockedThreadCheckInterval", 1000);
+        if (blockedThreadCheckInterval > 0) {
+            vertxOptions.setBlockedThreadCheckInterval(blockedThreadCheckInterval);
+        }
+
+        int eventLoopPoolSize = vertxConfig.getInteger("eventLoopPoolSize", Runtime.getRuntime().availableProcessors());
+        if (eventLoopPoolSize > 0) {
+            vertxOptions.setEventLoopPoolSize(eventLoopPoolSize);
+        }
+
+        int workerPoolSize = vertxConfig.getInteger("workerPoolSize", Runtime.getRuntime().availableProcessors() + 1);
+        if (workerPoolSize > 0) {
+            vertxOptions.setWorkerPoolSize(workerPoolSize);
+        }
+
+        return vertxOptions;
     }
 }
