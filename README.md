@@ -6,6 +6,8 @@ Grape is a distributed delay job system based on Redis.
 
 ## Releases
 
+* [1.3.3] Rest API bugfix
+
 * [1.3.2] Redis version 3.0.2
 
 * [1.3.1] improve API and bugfix.

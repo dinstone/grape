@@ -44,11 +44,6 @@ public abstract class RestApiHandler {
 	}
 
 	protected void success(RoutingContext ctx, Object result) {
-		Map<String, Object> jo = new LinkedHashMap<>();
-		if (result != null) {
-			jo.put("data", result);
-		}
-
 		ctx.response().end(Json.encode(result));
 	}
 
@@ -76,7 +71,7 @@ public abstract class RestApiHandler {
 
 	private String getMessage(Throwable throwable) {
 		if (throwable == null) {
-			return "unkwon exception";
+			return "unknown exception";
 		}
 		String message = throwable.getMessage();
 		if (message == null) {

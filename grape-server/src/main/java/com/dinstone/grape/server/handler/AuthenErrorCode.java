@@ -21,7 +21,7 @@ public enum AuthenErrorCode implements ErrorCode {
 
 	USERNAME_EMPTY(3000), PASSWORD_EMPTY(3001), AUTHEN_INVALID(3002);
 
-	private int value;
+	private final int value;
 
 	private AuthenErrorCode(int value) {
 		this.value = value;
